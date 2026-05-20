@@ -1,0 +1,75 @@
+
+
+[
+  {
+    "semester": "1-1",
+    "totalGpa": 4.0,
+    "generalGpa": 4.0,
+    "majorGpa": 4.0,
+    "courses": [
+      { "id": "c101", "type": "major", "name": "컴퓨터학개론", "grade": "A+", "credit": 3 },
+      { "id": "c102", "type": "general", "name": "글쓰기와 토론", "grade": "A0", "credit": 3 },
+      { "id": "c103", "type": "general", "name": "대학영어 1", "grade": "B+", "credit": 2 },
+      { "id": "c104", "type": "general", "name": "테니스", "grade": "A0", "credit": 1 },
+      { "id": "c105", "type": "major", "name": "프로그래밍 기초", "grade": "F", "credit": 3 },
+      { "id": "c106", "type": "major", "name": "이산수학", "grade": "A0", "credit": 3 },
+      { "id": "c107", "type": "general", "name": "철학의 이해", "grade": "A+", "credit": 3 }
+    ]
+  },
+  {
+    "semester": "1-2",
+    "totalGpa": 3.8,
+    "generalGpa": 3.5,
+    "majorGpa": 4.0,
+    "courses": [
+      { "id": "c111", "type": "major", "name": "자료구조", "grade": "A0", "credit": 3 },
+      { "id": "c112", "type": "major", "name": "C++ 프로그래밍", "grade": "A+", "credit": 3 },
+      { "id": "c113", "type": "general", "name": "세계 역사의 이해", "grade": "B0", "credit": 3 },
+      { "id": "c114", "type": "general", "name": "대학영어 2", "grade": "A0", "credit": 2 },
+      { "id": "c115", "type": "major", "name": "디지털 논리회로", "grade": "B+", "credit": 3 },
+      { "id": "c116", "type": "general", "name": "사회학개론", "grade": "B+", "credit": 3 }
+    ]
+  },
+  {
+    "semester": "2-1",
+    "totalGpa": 4.2,
+    "generalGpa": 4.5,
+    "majorGpa": 4.0,
+    "courses": [
+      { "id": "c201", "type": "major", "name": "알고리즘론", "grade": "A+", "credit": 3 },
+      { "id": "c202", "type": "major", "name": "운영체제", "grade": "A0", "credit": 3 },
+      { "id": "c203", "type": "major", "name": "데이터베이스 기초", "grade": "A0", "credit": 3 },
+      { "id": "c204", "type": "general", "name": "경제학원론", "grade": "A+", "credit": 3 },
+      { "id": "c205", "type": "general", "name": "생활 속의 심리학", "grade": "A+", "credit": 3 },
+      { "id": "c206", "type": "general", "name": "영화의 이해", "grade": "A0", "credit": 3 }
+    ]
+  },
+  {
+    "semester": "2-2",
+    "totalGpa": 3.5,
+    "generalGpa": 3.0,
+    "majorGpa": 4.0,
+    "courses": [
+      { "id": "c211", "type": "major", "name": "컴퓨터 네트워크", "grade": "B0", "credit": 3 },
+      { "id": "c212", "type": "major", "name": "소프트웨어 공학", "grade": "A0", "credit": 3 },
+      { "id": "c213", "type": "major", "name": "자바 프로그래밍", "grade": "A+", "credit": 3 },
+      { "id": "c214", "type": "general", "name": "한국사의 이해", "grade": "B+", "credit": 3 },
+      { "id": "c215", "type": "general", "name": "환경과 인간", "grade": "F", "credit": 3 },
+      { "id": "c216", "type": "general", "name": "문화인류학", "grade": "A0", "credit": 3 }
+    ]
+  },
+  {
+    "semester": "3-1",
+    "totalGpa": 4.0,
+    "generalGpa": 4.0,
+    "majorGpa": 4.0,
+    "courses": [
+      { "id": "c301", "type": "major", "name": "인공지능개론", "grade": "A0", "credit": 3 },
+      { "id": "c302", "type": "major", "name": "웹 프로그래밍", "grade": "A+", "credit": 3 },
+      { "id": "c303", "type": "major", "name": "시스템 프로그래밍", "grade": "A0", "credit": 3 },
+      { "id": "c304", "type": "general", "name": "고전 문학의 이해", "grade": "A0", "credit": 3 },
+      { "id": "c305", "type": "general", "name": "현대 사회와 미디어", "grade": "A+", "credit": 3 },
+      { "id": "c306", "type": "general", "name": "프랑스어 기초", "grade": "B+", "credit": 3 }
+    ]
+  }
+]
