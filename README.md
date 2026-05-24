@@ -21,4 +21,4 @@
 
 
 <h3 align="center"> DB ERD Structure </h3>
-<img src="/public/ERD.svg" height="60%" margin="auto" align="center" alt="ERD 다이어그램">
+<img src="/project/public/ERD.svg" height="60%" margin="auto" align="center" alt="DB ERD">
