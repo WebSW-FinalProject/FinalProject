@@ -48,6 +48,15 @@ app.get('/api/users/mypage', authMiddleware, async (req, res) => {
 const usersRouter = require('./src/routes/users');
 app.use('/api/users', usersRouter);
 
+const boardRouter = require('./src/routes/board.routes');
+app.use('/api/board', boardRouter);
+
+app.use((err, req, res, next) => {
+  const status  = err.status || 500;
+  const message = err.message || '서버 오류가 발생했습니다.';
+  console.error(`[${req.method}] ${req.path} →`, err);
+  res.status(status).json({ message });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
