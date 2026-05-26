@@ -1,1 +1,60 @@
 @import "tailwindcss";
+
+/* ── LIGHT THEME ── */
+:root {
+  --bg:        #E4EBF5;
+  --surface:   #FFFFFF;
+  --surface-2: #F0F3F7;
+  --border:    #DDE1E8;
+  --text-1:    #191C1E;
+  --text-2:    #43474D;
+  --text-3:    #6C7A8A;
+  --bar:       #4B8BE0;
+  --bar-track: #D4DCE9;
+  --accent:    #4B8BE0;
+  --accent-bg: #EBF3FD;
+  --navy:      #2A5CAA;
+  --inner-bg:  #F0F3F7;
+  --warn-bg:   #F3EFF8;
+  --warn-text: #7055AA;
+  --shadow:      0 2px 8px rgba(50,80,130,.1);
+  --shadow-card: 0 2px 14px rgba(50,80,130,.12), 0 0 0 1px rgba(50,80,130,.09);
+  --badge-neutral-bg:   #D6E8FC;
+  --badge-neutral-text: #1A3A6A;
+  --timetable-b-bg: #E6F2FF; --timetable-b-bd: #B8D4F0; --timetable-b-text: #1A3A6A;
+  --timetable-p-bg: #EAE8F5; --timetable-p-bd: #BCB8DC; --timetable-p-text: #3A3060;
+  --timetable-c-bg: #E0EEF8; --timetable-c-bd: #9CC0DE; --timetable-c-text: #1A3A5A;
+  --timetable-g-bg: #D8E8F5; --timetable-g-bd: #88B4D5; --timetable-g-text: #0F3055;
+}
+
+/* ── DARK THEME ── */
+[data-theme="dark"] {
+  --bg:        #10131A;
+  --surface:   #171B24;
+  --surface-2: #1E2230;
+  --border:    #282D3A;
+  --text-1:    #EDF0F5;
+  --text-2:    #8E97A8;
+  --text-3:    #505A6B;
+  --bar:       #5BAEFF;
+  --bar-track: #1E2230;
+  --accent:    #5BAEFF;
+  --accent-bg: #0E1A2E;
+  --navy:      #0E1A2E;
+  --inner-bg:  #1A1F2A;
+  --warn-bg:   #1A1030;
+  --warn-text: #C8AAFF;
+  --shadow:      0 4px 16px rgba(0,0,0,.6);
+  --shadow-card: 0 1px 4px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.045);
+  --badge-neutral-bg:   #1A2A40;
+  --badge-neutral-text: #88BBEE;
+  --timetable-b-bg: #131E2E; --timetable-b-bd: #1E3050; --timetable-b-text: #7AAFDC;
+  --timetable-p-bg: #181E30; --timetable-p-bd: #252F4A; --timetable-p-text: #6FA5D5;
+  --timetable-c-bg: #172030; --timetable-c-bd: #233248; --timetable-c-text: #5B9DD0;
+  --timetable-g-bg: #15202E; --timetable-g-bd: #1F3248; --timetable-g-text: #5095CE;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-1);
+}

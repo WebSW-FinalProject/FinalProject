@@ -1,26 +1,35 @@
 
-import GradeDash from '../grade/GradeDash';
-import GradeTotalDash from '../grade/GradeTotalDash';
+import type { Section, Page } from '../../hooks/useNavigation';
 
-function Main() { // props 예제 
-  
-
-  return (
-    <div className="p-1"> 
-        <div className="flex flex-col md:flex-row gap-6 w-full p-4"> 
-           <GradeDash />
-
-           {/* 시간표 위젯: gradeDash 이후 구현 => 차선책으로 대체가능 */}
-            <div className="md:w-1/3 border-2 border-blue-500 p-4 py-30 ">
-                <p> 시간표 위젯 (혹은 메모 위젯) </p>
-            </div>
-        </div>
+import Dashboard from '../pages/grades/Dashboard';
+import Credits   from '../pages/grades/Credits';
+import Timetable from '../pages/grades/Timetable';
+import AiAnalysis from '../pages/grades/AiAnalysis';
+import Board    from '../pages/Board';
+import Courses  from '../pages/Courses';
 
 
-       <GradeTotalDash />
-        
-    </div>
-  );
+interface MainProps {
+  section: Section;
+  page: Page;
+}
+
+function Main({ section, page }: MainProps) {
+
+  // 하위 탭 분리 로직 (page)
+
+  if (section === 'grades') {
+    if (page === 'dashboard') return <Dashboard />;
+    if (page === 'credits')   return <Credits />;
+    if (page === 'timetable') return <Timetable />;
+    if (page === 'ai')        return <AiAnalysis />;
+  }
+
+  if (section === 'board')   return <Board />;
+  if (section === 'courses') return <Courses />;
+
+
+  return null;
 }
 
 export default Main;

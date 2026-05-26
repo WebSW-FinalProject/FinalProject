@@ -1,14 +1,22 @@
 
-
 import Logo from '../logo.tsx';
-import { useState } from 'react';
 
-function Header() {
+import { useState } from 'react';
+import type { Section } from '../../hooks/useNavigation';
+
+
+interface HeaderProps {
+  section: Section;
+  goTo: (s: Section) => void;
+  // return 안하고 문자열만 바꿈 (void)
+}
+
+function Header({ section, goTo }: HeaderProps) {
 
   const menu = [
-    { id: "Grade", label: "학점 관리" },
-    { id: "Graduate", label: "수강신청 계획" },
-    { id: "Board", label: "게시판" },
+    { id: "grades",  label: "학점관리" },
+    { id: "board",   label: "게시판" },
+    { id: "courses", label: "수강신청 관리" },
   ];
 
   const Lang = [
@@ -16,17 +24,15 @@ function Header() {
     { id: "English", label: "ENG"},
   ];
 
-  const [selected, setSelected] = useState("Home");
   const [currentLang, setLang] = useState("ENG");
 
-   // 모든 border-white 는 레이아웃 확정 후 제거할 예정
   return (
     <>
       <nav className="border-2 border-black p-4"> 
         <div className="flex justify-between md:flex-row items-center gap-6 w-full p-1"> 
           <div className="border-2 border-white p-4">
-            < button onClick={() => setSelected("Home")}>
-                <div className="flex md:flex-row">
+            < button onClick={() => goTo("grades")}>
+                <div className="flex md:flex-row cursor-pointer">
                   <Logo /> 
                   <p className="px-1 text-2xl text-[#6CA9E8] font-bold">UNIGUIDE</p>
                 </div>  
@@ -42,12 +48,12 @@ function Header() {
                     className={`h-12 w-32 flex m-4
                       items-center justify-center 
                       rounded-2xl border-2 transition-all
-                      ${selected === menu.id ? "border-[#6CA9E8] bg-blue-50"
+                      ${section  === menu.id ? "border-[#6CA9E8] bg-blue-50"
                          : "border-gray-500 hover:bg-gray-100"}`  }  >
                     < button 
-                      onClick={() => setSelected(menu.id)}
+                      onClick={() => goTo(menu.id as Section)}
                       className={`w-full h-full font-semibold 
-                        ${selected === menu.id ? 
+                        ${section  === menu.id ? 
                           "text-blue-500" :
                           "text-gray-500"}`}
                     >

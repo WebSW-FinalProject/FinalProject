@@ -1,5 +1,4 @@
 
-import SemesterGradeBox from './SemesterGradeBox'
 
 function GradeDash() {
 
@@ -11,7 +10,6 @@ function GradeDash() {
 
       <h1 className="text-xl font-semibold"> 평균학점 {averageGPA}/4.5 </h1>
 
-      <SemesterGradeBox />
       <br /><br />
 
      </div>
