@@ -7,7 +7,6 @@ function createError(status, message) {
 }
 
 // ERD에 view_count가 없으므로 정렬은 likes(좋아요 수), latest(최신순)만 지원
-// views 정렬이 필요하면 팀원과 협의 후 posts 테이블에 view_count 컬럼 추가 필요
 const VALID_SORTS = {
   likes:  '(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) DESC, p.id DESC',
   latest: 'p.enroll_date DESC',
@@ -29,7 +28,6 @@ async function findPosts({ page = 0, sort = 'latest', searchType, keyword }) {
         params.push(`%${keyword}%`);
         break;
       case 'content':
-        // ERD 컬럼명: body
         where += ' AND p.body LIKE ?';
         params.push(`%${keyword}%`);
         break;
@@ -108,12 +106,12 @@ async function deletePost(id) {
   await db.query('DELETE FROM posts WHERE id=?', [id]);
 }
 
-// ERD에 view_count 컬럼 없음 → 팀원과 협의 후 컬럼 추가 시 아래 주석 해제
+// ERD에 view_count 컬럼 없음
 // async function incrementViewCount(id) {
 //   await db.query('UPDATE posts SET view_count = view_count + 1 WHERE id=?', [id]);
 // }
 async function incrementViewCount(id) {
-  // TODO: 팀원과 협의 후 posts 테이블에 view_count 컬럼 추가 필요
+  // TODO: posts 테이블에 view_count 컬럼 추가 필요
   // 현재는 ERD에 해당 컬럼이 없으므로 동작하지 않음
 }
 
