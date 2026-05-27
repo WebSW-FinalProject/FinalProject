@@ -26,17 +26,16 @@ function App() {
 
 
   return (
-    <div> 
+    <div className="flex flex-col min-h-screen bg-(--bg)">
       <Header section={section} goTo={goTo} />
       {section === 'grades' && <PageNav page={page} setPage={setPage} />}
-      
-      <div className="flex">
-        <Sidebar section={section} page={page} setPage={setPage} />
+
+      <div className="flex flex-1">
+        <Sidebar section={section} page={page} goTo={goTo} setPage={setPage} />
         <Main section={section} page={page} />
       </div>
 
       <Footer/>
-
     </div>
   );
 

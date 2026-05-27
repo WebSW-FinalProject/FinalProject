@@ -1,6 +1,7 @@
+
 @import "tailwindcss";
 
-/* ── LIGHT THEME ── */
+/* 라이트 모드 */
 :root {
   --bg:        #E4EBF5;
   --surface:   #FFFFFF;
@@ -27,7 +28,7 @@
   --timetable-g-bg: #D8E8F5; --timetable-g-bd: #88B4D5; --timetable-g-text: #0F3055;
 }
 
-/* ── DARK THEME ── */
+/* 다크 모드 */
 [data-theme="dark"] {
   --bg:        #10131A;
   --surface:   #171B24;

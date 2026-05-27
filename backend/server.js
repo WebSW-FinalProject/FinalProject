@@ -32,6 +32,7 @@ app.get('/api/db-test', async (req, res) => {
 // db 연결 test용 라우터
 // DB 에 가벼운 쿼리 보내서 잘 동작하는지 확인
 
+
 const authRouter = require('./src/routes/auth');
 app.use('/api/auth', authRouter); 
 // auth.js 와 연결되어 동작 (api/auth => auth: register, login)

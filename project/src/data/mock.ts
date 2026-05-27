@@ -1,9 +1,12 @@
 import type { User, Semester, Course, Post, Comment, GraduationRequirement } from '../types';
 
+// ai 도움 받아 생성한 mock data => 프론트 구현 시 백엔드 연결 용이하도록 함!
+// (설계해둔 MySQL DB구조-mysql_schema.sql 형식 따름)
+
 export const mockUser: User = {
   id: 1,
   email: 'test@univ.ac.kr',
-  username: '이도연',
+  username: '이문세',
   enroll_date: '2022-03-02T00:00:00.000Z',
 };
 
@@ -40,12 +43,12 @@ export const mockGradReqs: GraduationRequirement[] = [
 export const mockPosts: Post[] = [
   { id: 1, user_id: 2, category: 'GRADUATION', title: '졸업논문 주제 추천해주세요', body: 'AI 관련 논문 쓰려고 하는데 주제 추천 부탁드려요', enroll_date: '2025-05-20T10:00:00.000Z', modify_date: '2025-05-20T10:00:00.000Z', author_name: '김민준', like_count: 12, comment_count: 5 },
   { id: 2, user_id: 3, category: 'JOB_HUNT',  title: '취업 준비 어떻게 하세요?',   body: '포트폴리오 준비 중인데 조언 구합니다',         enroll_date: '2025-05-21T14:30:00.000Z', modify_date: '2025-05-21T14:30:00.000Z', author_name: '박서연', like_count: 8,  comment_count: 3 },
-  { id: 3, user_id: 1, category: 'DAILY',      title: '오늘 학식 뭐 나왔어요?',       body: '오늘 점심 메뉴 아시는 분?',                  enroll_date: '2025-05-22T11:00:00.000Z', modify_date: '2025-05-22T11:00:00.000Z', author_name: '이도연', like_count: 2,  comment_count: 1 },
+  { id: 3, user_id: 1, category: 'DAILY',      title: '오늘 학식 뭐 나왔어요?',       body: '오늘 점심 메뉴 아시는 분?',                  enroll_date: '2025-05-22T11:00:00.000Z', modify_date: '2025-05-22T11:00:00.000Z', author_name: '이문세', like_count: 2,  comment_count: 1 },
   { id: 4, user_id: 2, category: 'GRADUATION', title: '4학년 2학기 수강 조언',        body: '졸업논문이랑 같이 들을 수 있는 과목 추천요', enroll_date: '2025-05-23T09:00:00.000Z', modify_date: '2025-05-23T09:00:00.000Z', author_name: '김민준', like_count: 6,  comment_count: 2 },
   { id: 5, user_id: 3, category: 'JOB_HUNT',  title: '코테 준비 얼마나 했어요?',     body: '백준 몇 문제 풀었는지 궁금합니다',           enroll_date: '2025-05-24T16:00:00.000Z', modify_date: '2025-05-24T16:00:00.000Z', author_name: '박서연', like_count: 15, comment_count: 7 },
 ];
 
 export const mockComments: Comment[] = [
   { id: 1, post_id: 1, user_id: 3, body: '저도 같은 고민 중이에요!', enroll_date: '2025-05-20T11:00:00.000Z', author_name: '박서연' },
-  { id: 2, post_id: 1, user_id: 1, body: 'NLP 쪽 추천드려요',        enroll_date: '2025-05-20T12:00:00.000Z', author_name: '이도연' },
+  { id: 2, post_id: 1, user_id: 1, body: 'NLP 쪽 추천드려요',        enroll_date: '2025-05-20T12:00:00.000Z', author_name: '이문세' },
 ];

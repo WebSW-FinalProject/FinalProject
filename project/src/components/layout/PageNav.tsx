@@ -14,16 +14,16 @@ const tabs: { id: Page; label: string }[] = [
 
 function PageNav({ page, setPage }: PageNavProps) {
   return (
-    <nav className="flex items-center gap-1 px-4 h-[46px]
-                    bg-[var(--surface)] border-b border-[var(--border)]">
+    <nav className="flex items-center gap-1 px-4 h-11.5
+                    bg-(--surface) border-b border-(--border)">
       {tabs.map(t => (
         <button
           key={t.id}
           onClick={() => setPage(t.id)}
           className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors
             ${page === t.id
-              ? 'bg-[var(--surface-2)] text-[var(--text-1)] font-bold'
-              : 'text-[var(--text-2)] hover:bg-[var(--surface-2)]'
+              ? 'bg-(--surface-2) text-(--text-1) font-bold'
+              : 'text-(--text-2) hover:bg-(--surface-2)'
             }`}
         >
           {t.label}

@@ -1,95 +1,97 @@
-
 import Logo from '../logo.tsx';
-
 import { useState } from 'react';
 import type { Section } from '../../hooks/useNavigation';
-
 
 interface HeaderProps {
   section: Section;
   goTo: (s: Section) => void;
-  // return 안하고 문자열만 바꿈 (void)
 }
 
+const menu: { id: Section; label: string }[] = [
+  { id: 'grades',  label: '학점관리' },
+  { id: 'board',   label: '게시판' },
+  { id: 'courses', label: '수강신청 관리' },
+];
+
 function Header({ section, goTo }: HeaderProps) {
-
-  const menu = [
-    { id: "grades",  label: "학점관리" },
-    { id: "board",   label: "게시판" },
-    { id: "courses", label: "수강신청 관리" },
-  ];
-
-  const Lang = [
-    { id: "korean", label: "KOR"},
-    { id: "English", label: "ENG"},
-  ];
-
-  const [currentLang, setLang] = useState("ENG");
+  const [currentLang, setLang] = useState<'KOR' | 'ENG'>('KOR');
 
   return (
-    <>
-      <nav className="border-2 border-black p-4"> 
-        <div className="flex justify-between md:flex-row items-center gap-6 w-full p-1"> 
-          <div className="border-2 border-white p-4">
-            < button onClick={() => goTo("grades")}>
-                <div className="flex md:flex-row cursor-pointer">
-                  <Logo /> 
-                  <p className="px-1 text-2xl text-[#6CA9E8] font-bold">UNIGUIDE</p>
-                </div>  
-            </button>
-          </div>
+    <header className="h-14.5 bg-(--surface) border-b border-(--border)
+                       flex items-center justify-between px-11
+                       sticky top-0 z-100 shadow-(--shadow)">
 
-          {/* 메뉴 Section */}
-          <div className=" flex md:flex-row flex-wrap justify-center">
-              {menu.map((menu) => (
-                // 반복되는 메뉴 부분은 map으로 menu 배열 순회
-                  < div 
-                    key={menu.id} 
-                    className={`h-12 w-32 flex m-4
-                      items-center justify-center 
-                      rounded-2xl border-2 transition-all
-                      ${section  === menu.id ? "border-[#6CA9E8] bg-blue-50"
-                         : "border-gray-500 hover:bg-gray-100"}`  }  >
-                    < button 
-                      onClick={() => goTo(menu.id as Section)}
-                      className={`w-full h-full font-semibold 
-                        ${section  === menu.id ? 
-                          "text-blue-500" :
-                          "text-gray-500"}`}
-                    >
-                      {menu.label} {/* 내용물 setting */}
-                    </button>
-                  </div>
-                ))}
-          </div>
-          
+      {/* 로고 */}
+      <button
+        onClick={() => goTo('grades')}
+        className="flex items-center gap-2 shrink-0">
+        <Logo />
+        <span className="text-2xl tracking-tight font-black text-(--accent)" 
+              style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
+          UNIGUIDE
+        </span>
+      </button>
 
-          {/* 영/한 번역 및 ICON Section */}
-          <div className="flex flex-wrap md:flex-row gap-2 overflow-hidden">
-            <div className="flex border-2 border-white p-4">
-                {Lang.map((Lang) => (
-                  < div 
-                    key = {Lang.id} >
-                     < button
-                       onClick={() => setLang(Lang.id)}
-                       className = {`text-black
-                          ${currentLang === Lang.id ? 
-                          "text-blue-400" : "text-black" }`}
-                       >
-                    &nbsp; {Lang.label} &nbsp;
-                    </button>
-                  </div>
-                ))}
-            </div>
-
-            <div className=" border-2 border-white p-4">
-                    <p> ICON (2개) </p>
-            </div>
-          </div>
-          
-        </div>
+      {/* 메인 탭 */}
+      {/* text-1 : 활성화 | test-2 : 비활성화 */}
+      <nav className="flex items-center h-full">
+        {menu.map(item => (
+          <button
+            key={item.id}
+            onClick={() => goTo(item.id)}
+            className={`h-full px-3.5 text-sm font-medium
+                        border-b-2 transition-colors
+              ${section === item.id
+                ? 'border-(--text-1) text-(--text-1) font-bold'
+                : 'border-transparent text-(--text-2) hover:text-(--text-1)'
+              }`} >
+            <div className="whitespace-nowrap">{item.label}</div>
+          </button>
+        ))}
       </nav>
-    </>
+
+      {/* 아이콘 영역 */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* KOR | ENG */}
+        <div className="flex items-center text-xs 
+                        font-medium text-(--text-2) mr-2">
+          {(['KOR', 'ENG'] as const).map((lang, i) => (
+            <span key={lang}>
+              {i > 0 && <span className="mx-1 text-(--border)">|</span>}
+              <button
+                onClick={() => setLang(lang)}
+                className={currentLang === lang 
+                  ? 'text-(--text-1) font-bold' 
+                  : 'hover:text-(--text-1)'}>
+                {lang}
+              </button>
+            </span>
+          ))}
+        </div>
+
+        {/* 임시 아이콘 영역 */}
+        {[
+          { label: 'N' },
+          { label: 'M' },
+          { label: 'Set' },
+        ].map(({ label }) => (
+          <button
+            key={label}
+            className="w-8.5 h-8.5 rounded-lg flex items-center justify-center
+                       text-sm text-(--text-2) hover:bg-(--surface-2) 
+                       transition-colors">
+            {label}
+          </button>
+        ))}
+
+        {/* 프로필 버튼 */}
+        <button className="w-7.5 h-7.5 rounded-lg bg-(--navy) text-white
+                           text-[11px] font-bold flex items-center justify-center ml-1">
+          이
+        </button>
+
+      </div>
+    </header>
   );
 }
 
