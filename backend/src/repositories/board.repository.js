@@ -1,4 +1,4 @@
-const db = require('../../db/connection');
+const db = require('../db/connection');
 
 function createError(status, message) {
   const err = new Error(message);
@@ -6,9 +6,9 @@ function createError(status, message) {
   return err;
 }
 
-// ERD에 view_count가 없으므로 정렬은 likes(좋아요 수), latest(최신순)만 지원
 const VALID_SORTS = {
   likes:  '(SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) DESC, p.id DESC',
+  views:  'p.view_count DESC, p.id DESC',
   latest: 'p.enroll_date DESC',
 };
 
@@ -49,7 +49,7 @@ async function findPosts({ page = 0, sort = 'latest', searchType, keyword }) {
 
   const [rows] = await db.query(
     `SELECT p.id, p.title, p.body AS content, p.category,
-            p.enroll_date AS create_date, p.modify_date,
+            p.view_count, p.enroll_date AS create_date, p.modify_date,
             p.user_id AS author_id, u.username AS author_username,
             (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
      FROM posts p
@@ -74,7 +74,7 @@ async function findPosts({ page = 0, sort = 'latest', searchType, keyword }) {
 async function findPostById(id) {
   const [rows] = await db.query(
     `SELECT p.id, p.title, p.body AS content, p.category,
-            p.enroll_date AS create_date, p.modify_date,
+            p.view_count, p.enroll_date AS create_date, p.modify_date,
             p.user_id AS author_id, u.username AS author_username,
             (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
      FROM posts p
@@ -106,13 +106,8 @@ async function deletePost(id) {
   await db.query('DELETE FROM posts WHERE id=?', [id]);
 }
 
-// ERD에 view_count 컬럼 없음
-// async function incrementViewCount(id) {
-//   await db.query('UPDATE posts SET view_count = view_count + 1 WHERE id=?', [id]);
-// }
 async function incrementViewCount(id) {
-  // TODO: posts 테이블에 view_count 컬럼 추가 필요
-  // 현재는 ERD에 해당 컬럼이 없으므로 동작하지 않음
+  await db.query('UPDATE posts SET view_count = view_count + 1 WHERE id=?', [id]);
 }
 
 async function toggleLike(postId, userId) {
@@ -218,7 +213,7 @@ async function deleteComment(id) {
 async function findPostsByAuthor(userId, page = 0) {
   const offset = page * 10;
   const [rows] = await db.query(
-    `SELECT p.id, p.title, p.category,
+    `SELECT p.id, p.title, p.category, p.view_count,
             p.enroll_date AS create_date,
             p.user_id AS author_id, u.username AS author_username,
             (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
@@ -234,7 +229,7 @@ async function findPostsByAuthor(userId, page = 0) {
 
 async function findPostsLikedByUser(userId) {
   const [rows] = await db.query(
-    `SELECT p.id, p.title, p.category,
+    `SELECT p.id, p.title, p.category, p.view_count,
             p.enroll_date AS create_date,
             p.user_id AS author_id, u.username AS author_username,
             (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
@@ -250,7 +245,7 @@ async function findPostsLikedByUser(userId) {
 
 async function findPostsBookmarkedByUser(userId) {
   const [rows] = await db.query(
-    `SELECT p.id, p.title, p.category,
+    `SELECT p.id, p.title, p.category, p.view_count,
             p.enroll_date AS create_date,
             p.user_id AS author_id, u.username AS author_username,
             (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
