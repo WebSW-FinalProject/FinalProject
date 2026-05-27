@@ -6,9 +6,15 @@
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=TypeScript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-646CFF?style=flat&logo=Vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat&logo=Tailwind-CSS&logoColor=white" alt="Tailwind CSS">
-  <img src="https://img.shields.io/badge/Visual_Studio_Code-007ACC?style=flat&logo=Visual-Studio-Code&logoColor=white" alt="VS Code">
-  <img src="https://img.shields.io/badge/Git-F05032?style=flat&logo=Git&logoColor=white" alt="Git">
+  <img src="https://img.shields.io/badge/Visual_Studio_Code-007ACC?style=flat&logo=Visual-Studio-Code&logoColor=white" alt="VS Code"></p>
+  <p align="center">
+    <img src="https://img.shields.io/badge/Git-F05032?style=flat&logo=Git&logoColor=white" alt="Git">
   <img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=GitHub&logoColor=white" alt="GitHub">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=flat&logo=Node.js&logoColor=white" alt="Node.js">
+  
+  <img src="https://img.shields.io/badge/Express-000000?style=flat&logo=Express&logoColor=white" alt="Express">
+  <img src="https://img.shields.io/badge/JWT-black?style=flat&logo=JSON%20Web%20Tokens&logoColor=white" alt="JWT">
+
 </p>
 
 <br>
