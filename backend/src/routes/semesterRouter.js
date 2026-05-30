@@ -1,0 +1,76 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../db/connection');
+
+// 학기 목록 조회
+router.get('/', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [rows] = await db.query(
+      'SELECT * FROM semesters WHERE user_id = ? ORDER BY semester_year ASC, FIELD(term, "1", "summer", "2", "winter") ASC',
+      [userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: '학기 목록 조회 실패', error: err.message });
+  }
+});
+
+
+// 학기 추가
+router.post('/', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { semester_year, term } = req.body;
+
+    if (!semester_year || !term) {
+      return res.status(400).json({ message: 'semester_year, term은 필수입니다.' });
+    }
+
+    const [existing] = await db.query(
+      'SELECT id FROM semesters WHERE user_id = ? AND semester_year = ? AND term = ?',
+      [userId, semester_year, term]
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ message: '이미 존재하는 학기입니다.' });
+    }
+
+    const [result] = await db.query(
+      'INSERT INTO semesters (user_id, semester_year, term, gpa) VALUES (?, ?, ?, NULL)',
+      [userId, semester_year, term]
+    );
+
+    const [created] = await db.query(
+      'SELECT * FROM semesters WHERE id = ?',
+      [result.insertId]
+    );
+    res.status(201).json(created[0]);
+  } catch (err) {
+    res.status(500).json({ message: '학기 추가 실패', error: err.message });
+  }
+});
+
+// 학기 삭제
+router.delete('/:semester_id', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { semester_id } = req.params;
+
+    const [rows] = await db.query(
+      'SELECT id FROM semesters WHERE id = ? AND user_id = ?',
+      [semester_id, userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ message: '학기를 찾을 수 없습니다.' });
+    }
+
+    await db.query('DELETE FROM courses WHERE semester_id = ?', [semester_id]);
+    await db.query('DELETE FROM semesters WHERE id = ?', [semester_id]);
+
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ message: '학기 삭제 실패', error: err.message });
+  }
+});
+
+module.exports = router;
