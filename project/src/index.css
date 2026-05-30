@@ -2,6 +2,7 @@
 @import "tailwindcss";
 
 /* 라이트 모드 */
+
 :root {
   --bg:        #E4EBF5;
   --surface:   #FFFFFF;
@@ -18,6 +19,9 @@
   --inner-bg:  #F0F3F7;
   --warn-bg:   #F3EFF8;
   --warn-text: #7055AA;
+  --alert-warn: #BE123C;
+  --alert-border: #ab8790;
+  --alert-warn-bg: #FFF1F2;
   --shadow:      0 2px 8px rgba(50,80,130,.1);
   --shadow-card: 0 2px 14px rgba(50,80,130,.12), 0 0 0 1px rgba(50,80,130,.09);
   --badge-neutral-bg:   #D6E8FC;
@@ -45,6 +49,9 @@
   --inner-bg:  #1A1F2A;
   --warn-bg:   #1A1030;
   --warn-text: #C8AAFF;
+  --alert-warn:    #C8AAFF;
+  --alert-warn-bg: #1A1030;
+  --alert-border: #282D3A;
   --shadow:      0 4px 16px rgba(0,0,0,.6);
   --shadow-card: 0 1px 4px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.045);
   --badge-neutral-bg:   #1A2A40;
@@ -58,4 +65,13 @@
 body {
   background-color: var(--bg);
   color: var(--text-1);
+  overflow-x: hidden;
 }
+
+/* 사이드바, 네비 스크롤바 숨김 */
+aside::-webkit-scrollbar, nav::-webkit-scrollbar { display: none; }
+aside, nav { scrollbar-width: none; }
+
+textarea::-webkit-scrollbar { width: 4px; }
+textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+textarea::-webkit-scrollbar-track { background: transparent; }

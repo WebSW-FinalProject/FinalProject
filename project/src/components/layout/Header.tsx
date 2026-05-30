@@ -1,10 +1,13 @@
 import Logo from '../logo.tsx';
 import { useState } from 'react';
 import type { Section } from '../../hooks/useNavigation';
+import { Moon, Sun, Bell, Settings, User } from 'lucide-react';
 
 interface HeaderProps {
   section: Section;
   goTo: (s: Section) => void;
+  isDark: boolean;
+  setDark: (s: boolean) => void;
 }
 
 const menu: { id: Section; label: string }[] = [
@@ -13,20 +16,22 @@ const menu: { id: Section; label: string }[] = [
   { id: 'courses', label: '수강신청 관리' },
 ];
 
-function Header({ section, goTo }: HeaderProps) {
+
+
+function Header({ section, goTo, isDark, setDark}: HeaderProps) {
   const [currentLang, setLang] = useState<'KOR' | 'ENG'>('KOR');
 
   return (
     <header className="h-14.5 bg-(--surface) border-b border-(--border)
-                       flex items-center justify-between px-11
+                       flex items-center justify-start px-11 gap-10
                        sticky top-0 z-100 shadow-(--shadow)">
 
       {/* 로고 */}
       <button
         onClick={() => goTo('grades')}
-        className="flex items-center gap-2 shrink-0">
+        className="flex items-center gap-1 shrink-0">
         <Logo />
-        <span className="text-2xl tracking-tight font-black text-(--accent)" 
+        <span className="text-3xl tracking-tight font-black text-(--accent)" 
               style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
           UNIGUIDE
         </span>
@@ -51,7 +56,7 @@ function Header({ section, goTo }: HeaderProps) {
       </nav>
 
       {/* 아이콘 영역 */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-4 ml-auto shrink-0">
         {/* KOR | ENG */}
         <div className="flex items-center text-xs 
                         font-medium text-(--text-2) mr-2">
@@ -69,20 +74,34 @@ function Header({ section, goTo }: HeaderProps) {
           ))}
         </div>
 
-        {/* 임시 아이콘 영역 */}
-        {[
-          { label: 'N' },
-          { label: 'M' },
-          { label: 'Set' },
-        ].map(({ label }) => (
-          <button
-            key={label}
+
+
+        {/* ICON SECTION */}
+        <button
+            key='Notice'
             className="w-8.5 h-8.5 rounded-lg flex items-center justify-center
                        text-sm text-(--text-2) hover:bg-(--surface-2) 
                        transition-colors">
-            {label}
-          </button>
-        ))}
+            <Bell size={16}/>
+        </button>
+
+        <button
+          onClick={() => setDark(!isDark)}
+          className="w-8.5 h-8.5 rounded-lg flex items-center justify-center
+                    text-sm text-(--text-2) hover:bg-(--surface-2) transition-colors">
+          {isDark ? <Sun size={16}/> : <Moon size={16}/>}
+        </button>
+
+        <button
+            key='Settings'
+            className="w-8.5 h-8.5 rounded-lg flex items-center justify-center
+                       text-sm text-(--text-2) hover:bg-(--surface-2) 
+                       transition-colors">
+             <Settings size={16}/>
+        </button>
+
+
+
 
         {/* 프로필 버튼 */}
         <button className="w-7.5 h-7.5 rounded-lg bg-(--navy) text-white

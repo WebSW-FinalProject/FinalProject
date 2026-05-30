@@ -52,3 +52,4 @@ export const mockComments: Comment[] = [
   { id: 1, post_id: 1, user_id: 3, body: '저도 같은 고민 중이에요!', enroll_date: '2025-05-20T11:00:00.000Z', author_name: '박서연' },
   { id: 2, post_id: 1, user_id: 1, body: 'NLP 쪽 추천드려요',        enroll_date: '2025-05-20T12:00:00.000Z', author_name: '이문세' },
 ];
+

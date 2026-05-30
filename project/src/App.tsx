@@ -8,10 +8,17 @@ import Footer from './components/layout/Footer';
 import './App.css';  //css 
 
 import { useNavigation } from './hooks/useNavigation';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 
 function App() {
+
+  const [isDark, setDark] = useState(false); 
+  // default = light mode
+  
+  useEffect(() => {
+    document.documentElement.dataset.theme = isDark ? 'dark' : '';
+  }, [isDark]); 
 
   useEffect(() => {
     fetch('http://localhost:3000/api/health')
@@ -27,12 +34,14 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-(--bg)">
-      <Header section={section} goTo={goTo} />
-      {section === 'grades' && <PageNav page={page} setPage={setPage} />}
+      <Header section={section} goTo={goTo} isDark={isDark} setDark={setDark} />
 
       <div className="flex flex-1">
         <Sidebar section={section} page={page} goTo={goTo} setPage={setPage} />
-        <Main section={section} page={page} />
+        <div className="flex flex-col flex-1 min-w-0">
+          {section === 'grades' && <PageNav page={page} setPage={setPage} />}
+          <Main section={section} page={page} />
+        </div>
       </div>
 
       <Footer/>
