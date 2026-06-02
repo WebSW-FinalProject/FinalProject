@@ -55,6 +55,9 @@ app.use('/api/board', boardRouter);
 const semesterRouter = require('./src/routes/semesterRouter');
 app.use('/api/semesters', authMiddleware, semesterRouter);
 
+const gradeRouter = require('./src/routes/grade.routes');
+app.use('/api/grade', authMiddleware, gradeRouter);
+
 app.use((err, req, res, next) => {
   const status  = err.status || 500;
   const message = err.message || '서버 오류가 발생했습니다.';
