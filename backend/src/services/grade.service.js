@@ -1,5 +1,5 @@
 const parseGradeReport = require('../parser/grade');
-const db = require('../../db/connection');
+const db = require('../db/connection'); // 통합 상대경로 수정
 
 async function parseAndSave(filePath, userId) {
   const parsed = await parseGradeReport(filePath);
