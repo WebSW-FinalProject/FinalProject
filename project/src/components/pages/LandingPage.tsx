@@ -177,8 +177,16 @@ function LandingPage({ onLogin }: Props) {
           </p>
 
         </div>
+
+        {/* 팀원 소개 */}
+        <div className="mt-5 text-center">
+          <p className="text-[10px] text-(--text-3)">
+            이도연 · 김성령 · 윤채은 &nbsp;|&nbsp; 소프트웨어학부
+          </p>
+        </div>
+
       </div>
-      
+
       {/* # 우 — 서비스 소개 (화면 크기 클때만 보임) */}
       <div className="hidden lg:flex flex-col justify-center px-16 w-1/2
                       bg-(--surface) relative overflow-hidden">
@@ -245,7 +253,7 @@ function LandingPage({ onLogin }: Props) {
                 </div>
             </div>
           </div>
-          
+
         </div>
       </div>
 
