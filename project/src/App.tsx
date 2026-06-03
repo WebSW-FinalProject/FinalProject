@@ -8,7 +8,7 @@ import LandingPage from './components/pages/LandingPage';
 
 import './App.css';
 
-import { useNavigation } from './hooks/useNavigation';
+import { useNavigation } from './hooks/useNavigation'; 
 import { useState, useEffect } from 'react';
 
 

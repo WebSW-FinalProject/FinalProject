@@ -5,7 +5,7 @@
 
 :root {
   --bg:        #E4EBF5;
-  --surface:   #FFFFFF;
+  --surface:   #fafafa;
   --surface-2: #F0F3F7;
   --border:    #DDE1E8;
   --text-1:    #191C1E;
@@ -17,6 +17,7 @@
   --accent-bg: #EBF3FD;
   --navy:      #2A5CAA;
   --inner-bg:  #F0F3F7;
+  --inner-bg-2:  #f9fafc;
   --warn-bg:   #F3EFF8;
   --warn-text: #7055AA;
   --alert-warn: #BE123C;
@@ -24,8 +25,12 @@
   --alert-warn-bg: #FFF1F2;
   --shadow:      0 2px 8px rgba(50,80,130,.1);
   --shadow-card: 0 2px 14px rgba(50,80,130,.12), 0 0 0 1px rgba(50,80,130,.09);
-  --badge-neutral-bg:   #D6E8FC;
-  --badge-neutral-text: #1A3A6A;
+  --rec-neutral-bg:   #D6E8FC;
+  --rec-neutral-text: #1A3A6A;
+  --badge-neutral-bg:   #E8EBF0;
+  --badge-neutral-text: #5C6370;
+  --diff-easy-bg:   #E8F1FF; --diff-easy-text: #2A5CAA;
+  --diff-hard-bg:   #EDE9FE; --diff-hard-text: #4C1D95;
   --timetable-b-bg: #E6F2FF; --timetable-b-bd: #B8D4F0; --timetable-b-text: #1A3A6A;
   --timetable-p-bg: #EAE8F5; --timetable-p-bd: #BCB8DC; --timetable-p-text: #3A3060;
   --timetable-c-bg: #E0EEF8; --timetable-c-bd: #9CC0DE; --timetable-c-text: #1A3A5A;
@@ -47,6 +52,7 @@
   --accent-bg: #0E1A2E;
   --navy:      #0E1A2E;
   --inner-bg:  #1A1F2A;
+  --inner-bg-2:#222938;
   --warn-bg:   #1A1030;
   --warn-text: #C8AAFF;
   --alert-warn:    #C8AAFF;
@@ -54,8 +60,12 @@
   --alert-border: #282D3A;
   --shadow:      0 4px 16px rgba(0,0,0,.6);
   --shadow-card: 0 1px 4px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.045);
-  --badge-neutral-bg:   #1A2A40;
-  --badge-neutral-text: #88BBEE;
+  --rec-neutral-bg:   #1A2A40;
+  --rec-neutral-text: #88BBEE;
+  --badge-neutral-bg:   #1E2230;
+  --badge-neutral-text: #6C7A8A;
+  --diff-easy-bg:   #0E1A2E; --diff-easy-text: #5BAEFF;
+  --diff-hard-bg:   #1A1030; --diff-hard-text: #C8AAFF;
   --timetable-b-bg: #131E2E; --timetable-b-bd: #1E3050; --timetable-b-text: #7AAFDC;
   --timetable-p-bg: #181E30; --timetable-p-bd: #252F4A; --timetable-p-text: #6FA5D5;
   --timetable-c-bg: #172030; --timetable-c-bd: #233248; --timetable-c-text: #5B9DD0;
@@ -72,6 +82,13 @@ body {
 aside::-webkit-scrollbar, nav::-webkit-scrollbar { display: none; }
 aside, nav { scrollbar-width: none; }
 
+/* 팝업 내부 스크롤 영역 스크롤바 숨김 */
+.popup-scroll::-webkit-scrollbar { display: none; }
+.popup-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
 textarea::-webkit-scrollbar { width: 4px; }
 textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 textarea::-webkit-scrollbar-track { background: transparent; }
+
+
+

@@ -1,13 +1,13 @@
-import { useState } from 'react';
+
 import { mockCourses, mockGradReqs } from '../../../data/mock';
 
 
 // 졸업 인증 항목 (임시, 하드코딩)
 const GRAD_CERTS = [
-  { label: '영어 공인 성적', desc: '토익 700+',      done: false },
-  { label: '한국사 인증',    desc: '한국사 4급 이상', done: true  },
-  { label: 'SW 코딩 인증',  desc: '코딩테스트 2급',  done: false },
-  { label: '봉사 활동',     desc: '30시간 이상',     done: false },
+  { label: '영어 공인 성적', req: '토익 700+',      done: false },
+  { label: '한국사 인증',    req: '한국사 4급 이상', done: true  },
+  { label: 'SW 코딩 인증',  req: '코딩테스트 2급',  done: false },
+  { label: '봉사 활동',     req: '30시간 이상',     done: false },
 ];
 
 // 교양 영역별 현황 
@@ -26,7 +26,6 @@ const TOTAL_GRAD_CR = 140; // 졸업 필요 총학점 (임시, 하드코딩)
 
 
 function Credits() {
-  const [plans, setPlans] = useState({ s31: '', s32: '', s41: '', s42: '' });
 
   // mock 데이터 계산 (임시)
   const doneCourses  = mockCourses.filter(c => c.grade_points !== null); // 0 수강한 강의
@@ -52,7 +51,7 @@ c => c.category === '전공필수'
                    + mockGradReqs.find(r => r.area === '교양선택')!.required; // #c 교양선택 졸업기준학점
 
 
-  // SVG 도넛 차트 계산 (Chart.js 대체 예정: 임시!!)
+  // SVG 도넛 차트 계산 (임시.. 연결할때 다시 보기. 애니메이션 추가하고 svg 그대로 감.)
   const r   = 44;
   const circ = Math.round(2 * Math.PI * r);
   const offset = Math.round(circ * (1 - gradPct / 100));
@@ -61,6 +60,7 @@ c => c.category === '전공필수'
 
 
   return (
+    <>
     <div className="p-3.5 pb-15 w-full">
 
       {/* # alert 섹션 (임시, 하드코딩) */}
@@ -88,7 +88,7 @@ c => c.category === '전공필수'
       </div>
 
       {/* #1 상단 블럭 집합 */}
-      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 mb-4">
 
           {/* #1-1 졸업 달성률 블럭 */}
           <div className="bg-(--surface) rounded-xl border border-(--border) 
@@ -312,113 +312,56 @@ c => c.category === '전공필수'
           
       </div>
 
-      {/* #2 졸업 인증 현황 */}
-      <div className="bg-(--surface) rounded-xl border 
-                      border-(--border) overflow-hidden mb-4"
-           style={{ boxShadow: 'var(--shadow-card)' }}>
-        
-        {/* 블럭 헤더 */}
-        <div className="flex px-4.5 py-3 border-b border-(--border) 
-                        justify-between items-center">
-          <span className="font-bold text-[13px]">졸업 요건 현황</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold
-                           bg-(--warn-bg) text-(--warn-text) border border-(--border)">
-            {incompleteCerts}개 미완료
-          </span>
+      {/* #2 졸업요건현황 */}
+      <div className="grid gap-4 mb-4">
+
+        {/* 졸업 인증 현황 */}
+        <div className="bg-(--surface) rounded-xl border
+                        border-(--border) overflow-hidden"
+            style={{ boxShadow: 'var(--shadow-card)' }}>
+          
+          {/* 블럭 헤더 */}
+          <div className="flex px-4.5 py-3 border-b border-(--border) 
+                          justify-between items-center">
+            <span className="font-bold text-[13px]">졸업 요건 현황</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold
+                            bg-(--warn-bg) text-(--warn-text) border border-(--border)">
+              {incompleteCerts}개 미완료
+            </span>
+          </div>
+
+          {/* 졸업 요건들 (임시, 하드코딩) => 연결: 버튼 클릭하면 졸업요건 done true<=>false 전환 @*/}
+          <div className="grid grid-cols-4 gap-2 mb-3 px-4">
+            {GRAD_CERTS.map((cert) => (
+              <div key={cert.label} 
+                   className="mt-4 bg-(--inner-bg-2) rounded-xl p-3 cursor-pointer hover:shadow-md
+                                transition-shadow border border-(--border)">
+                <p className="text-[10px] font-semibold text-(--text-3) mb-1.5">
+                  {cert.label}
+                </p>
+                <p className={`text-[12px] font-bold mb-2 
+                              ${cert.done ? 'text-(--text-1)' : 'text-(--text-2)'}`}>
+                  {cert.req}
+                </p>
+
+                {cert.done
+                  ? <span className="px-1.5 rounded-full text-[9px] font-semibold
+                                    bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
+                                      완료
+                    </span>
+                  : <span className="px-1.5 rounded-full text-[9px] font-semibold
+                                    bg-(--warn-bg) text-(--warn-text)">
+                                      미완료
+                    </span>
+                }
+              </div>
+            ))}
+          </div>
         </div>
-
-        {/* 졸업 요건들 (임시, 하드코딩) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-(--border)">
-          {GRAD_CERTS.map((cert) => (
-            <div key={cert.label} className="p-3.5">
-
-              <p className="text-[10px] font-semibold text-(--text-3) mb-1.5">
-                {cert.label}
-              </p>
-              <p className={`text-[12px] font-bold mb-2 ${cert.done 
-                ? 'text-(--text-1)' 
-                : 'text-(--text-2)'}`}>
-                {cert.desc}
-              </p>
-              {cert.done
-                ? <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                   bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                                    완료
-                  </span>
-                : <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                   bg-(--warn-bg) text-(--warn-text)">
-                                    미완료
-                  </span>
-              }
-
-            </div>
-          ))}
-        </div>
-      </div>
-
-
-      {/* #3 학점 이수 계획표 블럭*/}
-      <div className="bg-(--surface) rounded-xl border  
-                      border-(--border) overflow-hidden"
-           style={{ boxShadow: 'var(--shadow-card)' }}>
-
-        {/* 블럭 헤더 */}
-        <div className="flex px-4.5 py-3 border-b border-(--border)  
-                        justify-between items-center">
-          <span className="font-bold text-[13px]">학점 이수 계획표</span>
-          {/* @ 저장 기능 구현 필요 */}
-          <button className="px-3 py-1 rounded-lg text-[11px] font-semibold
-                             bg-(--text-1) text-(--surface) hover:opacity-85 
-                             transition-opacity">
-            저장
-          </button>
-        </div>
-
-        {/* 학점 이수 계획표 (임시, 하드코딩) */}
-        {/* 4row->2row(2 2)->1row 로 차례대로 대응시켜 반응형레이아웃 개선! */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 p-3.5">
-          {[
-            { key: 's31' as const, label: '3학년 1학기', current: true },
-            { key: 's32' as const, label: '3학년 2학기', current: false },
-            { key: 's41' as const, label: '4학년 1학기', current: false },
-            { key: 's42' as const, label: '4학년 2학기', current: false },
-          ].map(sem => (
-            <div key={sem.key}>
-              <p className="text-[11px] font-bold text-(--text-2) mb-1.5 
-                            flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full inline-block 
-                                  ${sem.current ? 'bg-(--bar)' : 'bg-(--text-3)'}`}/>
-                {sem.label}
-                {sem.current && (
-                  <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                   bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                                    현재
-                  </span>
-                )}
-              </p>
-
-              {/* 학점 이수 계획표 블럭, placeholder (임시, 하드코딩) */}
-              <textarea
-                value={plans[sem.key]}
-                onChange={e => setPlans(prev => ({ ...prev, [sem.key]: e.target.value }))}
-
-                placeholder={sem.current ? '수강 과목\n자료구조 (3학점)\n알고리즘 (3학점)'
-                                         : '수강 예정 과목'}
-                className="w-full h-24 text-[11px] p-2 rounded-lg resize-none
-                           bg-(--inner-bg) border border-(--border) text-(--text-1)
-                           placeholder:text-(--text-3) focus:outline-none
-                           focus:border-(--accent) transition-colors"
-              />
-            </div>
-          ))}
-        </div>
-        
-        <p className="px-4.5 pb-3 text-[11px] text-(--text-3)">
-          계획 내용은 브라우저에 저장되며, 학교 시스템과는 연동되지 않습니다.
-        </p>
-      </div>
-
+      </div> 
     </div>
+
+    </>
   );
 }
 

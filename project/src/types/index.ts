@@ -54,7 +54,8 @@ export interface Post {
   body: string;
   enroll_date: string;
   modify_date: string;
-  author_name?: string;  
+  view_count?: number;    
+  author_name?: string;   // user-post JOIN
   like_count?: number;  
   comment_count?: number;
 }
@@ -66,5 +67,5 @@ export interface Comment {
   user_id: number;
   body: string;
   enroll_date: string;
-  author_name?: string;
+  author_name?: string; // user-comment JOIN
 }

@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { Clock, CheckCircle2 } from 'lucide-react';
+import { Clock, CheckCircle2, Calendar } from 'lucide-react';
+import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 import { mockSemesters, mockCourses, mockPosts } from '../../../data/mock';
 
 import gradeImg from '../../../assets/grade.png';
@@ -41,7 +42,7 @@ function gradeStyle(g: string) {
 }
 
 // 과목 구분 circle dot
-function dotColor(cat: string) {
+export function dotColor(cat: string) {
   if (cat === '전공필수') return 'bg-(--timetable-b-bd)';
   if (cat === '전공선택') return 'bg-(--timetable-p-bd)';
   if (cat === '교양선택') return 'bg-(--timetable-c-bd)';
@@ -117,13 +118,19 @@ function Dashboard() {
     }
   }
 
+  // 학기 추가 모달
+  const [addSemOpen, setAddSemOpen] = useState(false);
+  const [newSemName, setNewSemName] = useState('');
+  const [newSemCourses, setNewSemCourses] = useState<{ name: string; category: string; credit: string }[]>([]);
+
   return (
+    <>
     <div className="p-3.5 pb-15 w-full">
 
       {/* ## alert 섹션 (임시, 하드코딩) */}
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg
-                      bg-(--accent-bg) border border-(--border) 
-                      mb-3 text-xs text-(--text-2)">
+                      bg-(--accent-bg) border border-(--border) whitespace-nowrap
+                      mb-3 text-xs text-(--text-2) ">
         <Clock size={11} className="text-(--accent) shrink-0" />
         <span className="text-[10px] font-bold text-(--accent)">D-7</span>
         <span>중간성적 입력 마감</span>
@@ -131,13 +138,13 @@ function Dashboard() {
         <span><b>06.02</b> 수강신청</span>
         <span className="text-(--text-3)">·</span>
         <span><b>06.15</b> 기말고사</span>
-        <span className="ml-auto text-[10px] text-(--text-3)">
+        <span className="ml-auto text-[10px] text-(--text-3) hidden sm:block">
           2025년 1학기 · 소프트웨어학부
           </span>
       </div>
 
       {/* ## TOP 2열 구조 (메인 GPA + 졸업현황 블록) */}
-      <div className="flex flex-col md:flex-row gap-2.5 mb-3.5">
+      <div className="flex flex-col sm:flex-row gap-2.5 mb-3.5">
 
         {/* GPA 메인 카드 */}
         <div className="flex-8 card p-3.5 min-w-0 overflow-hidden flex items-center
@@ -286,10 +293,11 @@ function Dashboard() {
               <span className="font-bold text-sm flex items-center gap-1.5">
                 학기별 성적
               </span>
-              { /* 학기 추가 버튼 @ */ }
-              <button className="text-[11px] font-medium text-(--text-2) border 
-                                border-(--border) rounded-lg
-                                px-2.5 py-1 hover:bg-(--surface-2) transition-colors">
+              <button
+                onClick={() => setAddSemOpen(true)}
+                className="text-[11px] font-medium text-(--text-2) border
+                           border-(--border) rounded-lg
+                           px-2.5 py-1 hover:bg-(--surface-2) transition-colors">
                 + 학기 추가
               </button>
             </div>
@@ -331,9 +339,9 @@ function Dashboard() {
                       fontFamily="Inter" textAnchor="end">3.5</text>
 
                 {/* 목표 GPA 기준선 (임시 하드코딩 4.2) */}
-                <line x1="20" y1="35" x2="540" y2="35" stroke="#818CF8" 
+                <line x1="20" y1="35" x2="540" y2="35" stroke="var(--bar)" 
                       strokeWidth={1.5} strokeDasharray="5 3" opacity={0.75}/>
-                <text x={543} y={39} fontSize={8} fill="#818CF8" 
+                <text x={543} y={39} fontSize={8} fill="var(--bar)" 
                       fontFamily="Inter" fontWeight={700}>목표</text>
 
                 {/* fill + line */}
@@ -404,7 +412,7 @@ function Dashboard() {
               <span> <b className="text-(--text-1)">자료구조 A+, 알고리즘 A0
                     </b> 이상이면 이번 학기 목표 GPA 4.2 달성 가능. </span>
               <span className="ml-auto px-1.5 py-0.5 rounded-full text-[8px] font-semibold
-                              bg-[#DBEAFE] text-[#1E40AF] 
+                              bg-(--accent-bg) text-(--accent) 
                                whitespace-nowrap shrink-0">달성 가능 ✓</span>
             </div>
 
@@ -604,7 +612,7 @@ function Dashboard() {
          </div>
 
         {/* #2열+3열 wrapper: md에서 2열, lg에서 투명(contents)해져서 부모 3열에 참여 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:contents gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:contents gap-3.5">
 
           {/* #2열 : 목표 성적 | 커뮤니티 */}
           <div className="flex flex-col gap-3.5 h-full">
@@ -661,7 +669,8 @@ function Dashboard() {
                         {row.name}
                       </span>
                       <div className="flex items-center gap-1">
-                        <span className={`px-1.5 py-px rounded-full text-[9px] font-semibold
+                        <span className={`px-1.5 py-px rounded-full 
+                                          text-[9px] font-semibold
                             ${row.type === 'must'
                             ? 'bg-(--warn-bg) text-(--warn-text)'
                             : row.type === 'rec'
@@ -1011,6 +1020,102 @@ function Dashboard() {
       </div>
 
     </div>
+
+    {/* ── 학기 추가 모달 ── */}
+    <Popup open={addSemOpen} onClose={() => setAddSemOpen(false)} width="460px">
+      <PopupHeader
+        title={<><Calendar size={14} className="text-(--accent)"/> 학기 추가</>}
+        onClose={() => setAddSemOpen(false)}
+      />
+      <div className="px-4.5 py-4 flex flex-col gap-4">
+        <div>
+          <label className="block text-[11px] font-semibold text-(--text-2) mb-1.5">
+            학기 <span className="font-normal text-(--text-3)">(예: 3-2, 4-1)</span>
+          </label>
+          <input
+            value={newSemName}
+            onChange={e => setNewSemName(e.target.value)}
+            placeholder="3-2"
+            className="w-28 px-3 py-1.5 text-[13px] rounded-lg
+                       bg-(--surface) border border-(--border) text-(--text-1)
+                       focus:outline-none focus:border-(--text-2) transition-colors"
+          />
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[11px] font-semibold text-(--text-2)">
+              수강 과목 <span className="font-normal text-(--text-3)">(선택)</span>
+            </label>
+            <button
+              onClick={() => setNewSemCourses([...newSemCourses, { name: '', category: '전공필수', credit: '3' }])}
+              className="flex items-center gap-1 text-[10px] font-medium text-(--text-2)
+                         border border-(--border) rounded-lg px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
+              + 과목 추가
+            </button>
+          </div>
+          <div className="grid text-[10px] text-(--text-3) px-0.5 mb-1"
+               style={{ gridTemplateColumns: '1fr 100px 54px 22px', gap: '0 5px' }}>
+            <span>과목명</span><span>구분</span><span className="text-center">학점</span><span/>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {newSemCourses.map((c, i) => (
+              <div key={i} className="grid gap-1.5 items-center"
+                   style={{ gridTemplateColumns: '1fr 100px 54px 22px' }}>
+                <input
+                  value={c.name}
+                  onChange={e => setNewSemCourses(newSemCourses.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                  placeholder="과목명"
+                  className="px-2 py-1 text-[11px] rounded-lg 
+                             bg-(--surface) border border-(--border)
+                             text-(--text-1) focus:outline-none 
+                             focus:border-(--text-2) transition-colors"
+                />
+                <select
+                  value={c.category}
+                  onChange={e => setNewSemCourses(newSemCourses.map((x, j) => j === i ? { ...x, category: e.target.value } : x))}
+                  className="px-2 py-1 text-[11px] rounded-lg bg-(--surface) border border-(--border)
+                             text-(--text-1) focus:outline-none cursor-pointer">
+                  {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                </select>
+                <input
+                  value={c.credit}
+                  onChange={e => setNewSemCourses(newSemCourses.map((x, j) => j === i ? { ...x, credit: e.target.value } : x))}
+                  placeholder="3"
+                  className="px-2 py-1 text-[11px] text-center rounded-lg bg-(--surface) border border-(--border)
+                             text-(--text-1) focus:outline-none focus:border-(--text-2) transition-colors"
+                />
+                <button
+                  onClick={() => setNewSemCourses(newSemCourses.filter((_, j) => j !== i))}
+                  className="text-(--text-3) hover:text-red-400 transition-colors text-[16px] leading-none">
+                  ×
+                </button>
+              </div>
+            ))}
+            {newSemCourses.length === 0 && (
+              <p className="text-[11px] text-(--text-3) text-center py-3">
+                과목을 추가하면 학기 내역에 표시됩니다
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+      <PopupFooter>
+        <button onClick={() => setAddSemOpen(false)}
+                className="px-4 py-1.5 rounded-lg text-[12px] 
+                           border border-(--border)
+                           text-(--text-2) hover:bg-(--surface-2) transition-colors">
+          취소
+        </button>
+        <button
+          onClick={() => { setAddSemOpen(false); setNewSemName(''); setNewSemCourses([]); }}
+          className="px-4 py-1.5 rounded-lg text-[12px] font-semibold
+                     bg-(--text-1) text-(--surface) 
+                     hover:opacity-85 transition-opacity">
+          저장
+        </button>
+      </PopupFooter>
+    </Popup>
+    </>
   );
 }
 
