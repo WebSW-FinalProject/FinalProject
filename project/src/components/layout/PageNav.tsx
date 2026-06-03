@@ -17,7 +17,7 @@ function PageNav({ page, setPage }: PageNavProps) {
   return (
     <nav className="flex items-center gap-0.5 px-11 h-11.5
                     bg-(--surface) border-b border-(--border)
-                    sticky top-14.5 z-90 overflow-x-auto">
+                    sticky top-12.5 z-90 overflow-x-auto">
                       
       {tabs.map(t => (
         <button
@@ -29,7 +29,7 @@ function PageNav({ page, setPage }: PageNavProps) {
               ? 'bg-(--surface-2) text-(--text-1) font-bold'
               : 'text-(--text-2) hover:bg-(--surface-2) hover:text-(--text-1)'
             }`}
-        >
+         >
           {t.icon}
           {t.label}
         </button>

@@ -37,6 +37,7 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
   
   const [collapsed, setCollapsed] = useState(false);
   const isActive = (p: Page) => section === 'grades' && page === p;
+  // 
 
   // md~lg: 항상 아이콘만 / lg+: collapsed 상태에 따라
   // text는 collapsed 이거나 lg 미만이면 숨김 
@@ -48,10 +49,10 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
   
   return (
     <aside
-      className={`max-sm:hidden flex flex-col shrink-0
+      className={`max-md:hidden flex flex-col shrink-0
                   bg-(--surface) border-r border-(--border)
                   py-2 px-1 transition-all duration-200
-                  sticky top-14.5 h-[calc(100vh-58px)] overflow-y-auto
+                  sticky top-12.5 h-[calc(100vh-50px)] overflow-y-auto
                   w-12 ${!collapsed ? 'lg:w-48 lg:px-1.5' : ''}`}>
       {/* 사이드바는 접혔을 때 넓이 없애서 화면 키워도 미니 바로 유지! */}
 
@@ -135,7 +136,7 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
         <span className={inTxt}>수강신청</span>
       </button>
 
-      {/* 이번 학기 요약 | 다가오는 일정*/}
+      {/* 이번 학기 요약 | 다가오는 일정 (일정: 임시, 하드코딩..)*/}
       <div className={txt}>
         <div className="h-px bg-(--border) my-2 mx-1" />
         <p className="px-2.5 pb-1 text-[9px] font-bold text-(--text-3) 
