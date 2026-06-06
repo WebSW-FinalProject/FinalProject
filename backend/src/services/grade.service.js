@@ -4,10 +4,23 @@ const db = require('../db/connection'); // 통합 상대경로 수정
 async function parseAndSave(filePath, userId) {
   const parsed = await parseGradeReport(filePath);
 
+  const VALID_TERMS = new Set(['1', '2', 'summer', 'winter']);
+
+  function toTerm(raw) {
+    if (!raw) return null;
+    if (raw === '1학기') return '1';
+    if (raw === '2학기') return '2';
+    if (raw === '하계' || raw === '여름') return 'summer';
+    if (raw === '동계' || raw === '겨울') return 'winter';
+    return null; // 학점인정 등 매핑 불가 → 건너뜀
+  }
+
   const semesterMap = {};
   for (const c of parsed.courses) {
-    const key = `${c.year}-${c.semester}`;
-    if (!semesterMap[key]) semesterMap[key] = { year: c.year, term: c.semester, courses: [] };
+    const term = toTerm(c.semester);
+    if (!term || !VALID_TERMS.has(term)) continue; // 유효하지 않은 학기 스킵
+    const key = `${c.year}-${term}`;
+    if (!semesterMap[key]) semesterMap[key] = { year: c.year, term, courses: [] };
     semesterMap[key].courses.push(c);
   }
 

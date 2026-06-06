@@ -1,4 +1,5 @@
 const ExcelJS = require('exceljs');
+const fs = require('fs');
 
 // 병합셀 때문에 getCell로 읽어야 함, 중복값 제거
 function uniqRow(ws, rn) {
@@ -33,7 +34,8 @@ function findRow(ws, keywords) {
 
 module.exports = async function parseGradeReport(filePath) {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile(filePath);
+  const buffer = fs.readFileSync(filePath);
+  await wb.xlsx.load(buffer);
   const ws = wb.worksheets[0];
 
   // 학번, 이름
