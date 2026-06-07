@@ -1,5 +1,5 @@
 const parseGradeReport = require('../parser/grade');
-const db = require('../db/connection'); // 통합 상대경로 수정
+const db = require('../db/connection');
 
 async function parseAndSave(filePath, userId) {
   const parsed = await parseGradeReport(filePath);
@@ -15,10 +15,20 @@ async function parseAndSave(filePath, userId) {
     return null; // 학점인정 등 매핑 불가 → 건너뜀
   }
 
+  // 완료 과목 + 수강신청내역(현학기)을 학기별로 묶음
   const semesterMap = {};
+
   for (const c of parsed.courses) {
     const term = toTerm(c.semester);
-    if (!term || !VALID_TERMS.has(term)) continue; // 유효하지 않은 학기 스킵
+    if (!term || !VALID_TERMS.has(term)) continue;
+    const key = `${c.year}-${term}`;
+    if (!semesterMap[key]) semesterMap[key] = { year: c.year, term, courses: [] };
+    semesterMap[key].courses.push(c);
+  }
+
+  for (const c of (parsed.enrolledCourses || [])) {
+    const term = toTerm(c.semester);
+    if (!term || !VALID_TERMS.has(term)) continue;
     const key = `${c.year}-${term}`;
     if (!semesterMap[key]) semesterMap[key] = { year: c.year, term, courses: [] };
     semesterMap[key].courses.push(c);
@@ -37,16 +47,38 @@ async function parseAndSave(filePath, userId) {
       );
       const semesterId = semResult.insertId;
 
+      // 재업로드 시 중복 방지: 기존 과목 삭제 후 재삽입
+      await conn.query('DELETE FROM courses WHERE semester_id = ?', [semesterId]);
+
       for (const c of sem.courses) {
         await conn.query(
           `INSERT INTO courses
              (semester_id, code, name, credit, division, category, grade, area, sub_area)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE grade=VALUES(grade)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [semesterId, c.courseCode, c.courseName, c.credits,
-           c.category, c.courseType, c.grade, c.area, c.subArea]
+           c.category, c.courseType, c.grade ?? null, c.area ?? null, c.subArea ?? null]
         );
       }
+    }
+
+    // 졸업요건 저장 (파싱 결과에서 추출한 값)
+    const reqList = [
+      ['총졸업',  parsed.graduationRequired],
+      ['전공필수', parsed.majorRequired?.required],
+      ['전공선택', parsed.majorRequired?.elective],
+      ['개신기초교양',     parsed.liberalRequired?.['개신기초']],
+      ['자연이공계기초과학', parsed.liberalRequired?.['자연이공기초']],
+      ['일반교양',         parsed.liberalRequired?.['일반']],
+      ['확대교양',         parsed.liberalRequired?.['확대']],
+    ];
+    for (const [area, required] of reqList) {
+      if (required == null) continue;
+      await conn.query(
+        `INSERT INTO graduation_requirements (user_id, area, required)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE required = VALUES(required)`,
+        [userId, area, required]
+      );
     }
 
     await conn.commit();
