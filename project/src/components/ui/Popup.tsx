@@ -36,19 +36,21 @@ function Popup({ open, onClose, children, width = '400px' }: PopupProps) {
 
 // 팝업 헤더 (이름 + 닫기버튼)
 export function PopupHeader(
-  { title, onClose }: { title: React.ReactNode; onClose: () => void }
+  { title, onClose }: { title: React.ReactNode; onClose?: () => void }
 ) {
   return (
-    <div className="px-4.5 py-3.5 border-b border-(--border) 
-                    flex items-center justify-between 
+    <div className="px-4.5 py-3.5 border-b border-(--border)
+                    flex items-center justify-between
                     sticky top-0 bg-(--surface) z-10">
-      <p className="text-[14px] font-bold text-(--text-1) 
+      <p className="text-[14px] font-bold text-(--text-1)
                     flex items-center gap-1.5"> {title} </p>
-      <button onClick={onClose}
-              className="text-[22px] leading-none text-(--text-3) p-1 rounded-lg
-              hover:text-(--text-1) hover:bg-(--surface-2) transition-colors">
-        ×
-      </button>
+      {onClose && (
+        <button onClick={onClose}
+                className="text-[22px] leading-none text-(--text-3) p-1 rounded-lg
+                hover:text-(--text-1) hover:bg-(--surface-2) transition-colors">
+          ×
+        </button>
+      )}
     </div>
   );
 }
