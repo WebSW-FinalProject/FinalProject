@@ -117,5 +117,94 @@ module.exports = async function parseGradeReport(filePath) {
     });
   }
 
-  return { studentId, name, gpa, graduationRequired, totalEarned, majorRequired, courses };
+  // 수강신청내역 (현학기 수강 중 — 성적 없음)
+  const enrolledCourses = [];
+  for (let rn = 1; rn <= ws.rowCount; rn++) {
+    const vals = uniqRow(ws, rn).map(([, v]) => v);
+    const headerVal = vals.find(v => v.includes('수강신청내역'));
+    if (!headerVal) continue;
+
+    // 헤더 텍스트에서 년도/학기 추출 (예: "2026학년도 1학기 수강신청내역")
+    let enrollYear = null, enrollSemester = null;
+    const yearMatch = headerVal.match(/(\d{4})/);
+    if (yearMatch) enrollYear = parseInt(yearMatch[1]);
+    if (headerVal.includes('1학기'))     enrollSemester = '1학기';
+    else if (headerVal.includes('2학기')) enrollSemester = '2학기';
+    else if (headerVal.includes('하계')) enrollSemester = '하계';
+    else if (headerVal.includes('동계')) enrollSemester = '동계';
+
+    // 수강신청내역 컬럼 헤더 찾기 (교과목번호, 교과목명, 학점, 이수구분)
+    const enrollKeys = ['교과목번호', '교과목명', '학점', '이수구분'];
+    const ecm = {};
+    for (let r2 = rn + 1; r2 <= Math.min(rn + 10, ws.rowCount); r2++) {
+      for (let c = 1; c <= ws.columnCount; c++) {
+        const v = getVal(ws, r2, c);
+        if (v && enrollKeys.includes(v) && !ecm[v]) ecm[v] = c;
+      }
+      if (enrollKeys.every(k => ecm[k])) {
+        // 데이터 행 파싱
+        for (let dr = r2 + 1; dr <= ws.rowCount; dr++) {
+          const courseName = getVal(ws, dr, ecm['교과목명']);
+          if (!courseName) break;
+          const courseType = getVal(ws, dr, ecm['이수구분']);
+          const division = courseType?.includes('전공') ? '전공'
+                         : courseType?.includes('교양') ? '교양' : null;
+          enrolledCourses.push({
+            year: enrollYear,
+            semester: enrollSemester,
+            courseCode: getVal(ws, dr, ecm['교과목번호']),
+            courseName,
+            credits: getVal(ws, dr, ecm['학점']) ? parseFloat(getVal(ws, dr, ecm['학점'])) : null,
+            courseType,
+            category: division,
+            area: null,
+            subArea: null,
+            grade: null,
+          });
+        }
+        break;
+      }
+    }
+    break; // 수강신청내역 섹션 하나만
+  }
+  // 교양 4분야 기준학점 
+  const LIBERAL_KEY_MAP = {
+  '개신기초': '개신기초',
+  '자연': '자연이공기초',
+  '일반': '일반',
+  '확대': '확대',
+};
+const liberalRequired = {};
+
+for (let rn = 1; rn <= ws.rowCount; rn++) {
+  const colMap = {};
+  for (let c = 1; c <= ws.columnCount; c++) {
+    let v = ws.getCell(rn, c).value;
+    if (!v) continue;
+    v = typeof v === 'object' && v.text ? String(v.text).trim() : String(v).trim();
+    const norm = v.replace(/[^\w가-힣]/g, '');
+    for (const [keyword, mapped] of Object.entries(LIBERAL_KEY_MAP)) {
+      if (norm.includes(keyword) && !colMap[mapped]) {
+        colMap[mapped] = c;
+      }
+    }
+  }
+
+  if (Object.keys(colMap).length >= 2) {
+    for (let dr = rn + 1; dr <= Math.min(rn + 5, ws.rowCount); dr++) {
+      for (const [area, col] of Object.entries(colMap)) {
+        if (liberalRequired[area] != null) continue;
+        let val = ws.getCell(dr, col).value;
+        if (val == null) continue;
+        val = typeof val === 'object' && val.text ? String(val.text).trim() : String(val).trim();
+        const num = parseInt(val);
+        if (!isNaN(num) && num > 0) liberalRequired[area] = num;
+      }
+      if (Object.keys(liberalRequired).length >= 4) break;
+    }
+    break;
+  }
+}
+
+return { studentId, name, gpa, graduationRequired, totalEarned, majorRequired, liberalRequired, courses, enrolledCourses };
 };
