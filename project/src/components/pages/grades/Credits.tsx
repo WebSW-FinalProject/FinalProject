@@ -11,20 +11,8 @@ const GRAD_CERTS = [
 
 const TOTAL_GRAD_CR = 140;
 
-
-const LIBERAL_AREA_ORDER = [
-  '개신기초교양',
-  '사고와표현',
-  '외국어',
-  '사회문화이해',
-  '자연과학이해',
-  '예술체육',
-  '자유교양',
-];
-
 function Credits() {
   const { courses, gradReqs, loading, error } = useGradeData();
- 
 
   if (loading) {
     return (
@@ -42,8 +30,8 @@ function Credits() {
     );
   }
 
-  // 성적 있는 과목만
-  const doneCourses = courses.filter(c => c.grade_points !== null);
+  // 성적 있는 과목만 (F 제외)
+  const doneCourses = courses.filter(c => c.grade && c.grade !== 'F');
   const earnedCr    = doneCourses.reduce((s, c) => s + c.credit, 0);
   const gradPct     = Math.round((earnedCr / TOTAL_GRAD_CR) * 100);
 
@@ -55,38 +43,19 @@ function Credits() {
   const majorElecReq    = gradReqs.find(r => r.area === '전공선택')?.required ?? 30;
   const majorReq        = majorMustReq + majorElecReq;
 
+  // 교양 4분야
+  const LIBERAL_AREAS = ['개신기초교양', '자연이공계기초과학', '일반교양', '확대교양'];
+  const liberalAreaRows = LIBERAL_AREAS.map(name => ({
+    name,
+    earned: doneCourses.filter(c => c.area === name).reduce((s,c) => s+c.credit, 0),
+    required: gradReqs.find(r => r.area === name)?.required ?? 0,
+  }));
+
   // 교양
-  const liberalDone   = doneCourses.filter(c => c.division === '교양');
-  const liberalEarned = liberalDone.reduce((s, c) => s + c.credit, 0);
-  const liberalReq    = (gradReqs.find(r => r.area === '교양필수')?.required ?? 18)
-                      + (gradReqs.find(r => r.area === '교양선택')?.required ?? 12);
-
-  // 교양 세부 영역 — 이수학점은 courses.area 집계, 기준학점은 gradReqs에서 (엑셀 파싱으로 DB 저장된 값)
-  const liberalAreaMap: Record<string, number> = {};
-  for (const c of liberalDone) {
-    if (!c.area) continue;
-    liberalAreaMap[c.area] = (liberalAreaMap[c.area] ?? 0) + c.credit;
-  }
-
-  // gradReqs에서 교양 세부 영역 기준학점 읽기 (전공필수/선택/교양필수/선택 제외)
-  const MAJOR_LIBERAL_AREAS = new Set(['전공필수', '전공선택', '교양필수', '교양선택']);
-  const liberalAreaReqMap: Record<string, number> = {};
-  for (const r of gradReqs) {
-    if (!MAJOR_LIBERAL_AREAS.has(r.area)) {
-      liberalAreaReqMap[r.area] = r.required;
-    }
-  }
-
-  // gradReqs에만 있고 ORDER에 없는 영역도 맨 뒤에 추가
-  const orderedAreas = LIBERAL_AREA_ORDER
-    .filter(name => liberalAreaReqMap[name] !== undefined || liberalAreaMap[name] !== undefined)
-    .map(name => ({ name, earned: liberalAreaMap[name] ?? 0, required: liberalAreaReqMap[name] ?? 0 }));
-
-  const extraAreas = Object.keys(liberalAreaReqMap)
-    .filter(name => !LIBERAL_AREA_ORDER.includes(name))
-    .map(name => ({ name, earned: liberalAreaMap[name] ?? 0, required: liberalAreaReqMap[name] }));
-
-  const LIBERAL_AREAS = [...orderedAreas, ...extraAreas];
+  const liberalEarned = liberalAreaRows.reduce((s,r) => s+r.earned, 0);
+  const liberalMustReq = gradReqs.find(r => r.area === '교양필수')?.required ?? 18;
+  const liberalElecReq = gradReqs.find(r => r.area === '교양선택')?.required ?? 12;
+  const liberalReq     = liberalMustReq + liberalElecReq;
 
   // SVG 도넛
   const r     = 44;
@@ -263,51 +232,33 @@ function Credits() {
               </span>
             </div>
 
-            <div className="grid px-4.5 py-2 text-[10px] font-semibold text-(--text-3) border-b border-(--border)"
-                 style={{ gridTemplateColumns: '1fr 60px 60px 70px', gap: '0 4px' }}>
-              <span>영역</span>
+            <div className="grid px-4.5 py-2 text-[10px] font-semibold text-(--text-3)
+                            border-b border-(--border)"
+                 style={{ gridTemplateColumns: '10px 1fr 80px 80px 1fr', gap: '0 8px' }}>
+              <span/><span>영역</span>
               <span className="text-right">이수</span>
               <span className="text-right">기준</span>
-              <span className="text-center">상태</span>
+              <span className="pl-3">진행률</span>
             </div>
 
-            {LIBERAL_AREAS.length === 0 ? (
-              <div className="px-4.5 py-4 text-[12px] text-(--text-3) text-center">
-                엑셀 성적표를 업로드하면 영역별 현황이 표시됩니다.
-              </div>
-            ) : (
-              LIBERAL_AREAS.map(area => {
-                const done = area.required > 0 && area.earned >= area.required;
-                const diff = area.required - area.earned;
-                return (
-                  <div key={area.name}
-                       className="grid px-4.5 py-2.5 items-center border-b border-(--border) last:border-none text-[12px]"
-                       style={{ gridTemplateColumns: '1fr 60px 60px 70px', gap: '0 4px' }}>
-                    <span className="text-(--text-1)">{area.name}</span>
-                    <span className="text-right font-bold tabular-nums text-(--text-1)">{area.earned}</span>
-                    <span className="text-right text-(--text-3)">
-                      {area.required > 0 ? `${area.required}학점` : '-'}
-                    </span>
-                    <span className="text-center">
-                      {area.required === 0 ? (
-                        <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                        bg-(--badge-neutral-bg) text-(--badge-neutral-text)">-</span>
-                      ) : done ? (
-                        <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                        bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                          완료{diff < 0 && <>&nbsp;+{-diff}학점</>}
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                        bg-(--warn-bg) text-(--warn-text)">
-                          {diff}학점↓
-                        </span>
-                      )}
-                    </span>
+            {liberalAreaRows.map(row => (
+              <div key={row.name}
+                   className="grid px-4.5 py-2.5 items-center border-b border-(--border) last:border-none"
+                   style={{ gridTemplateColumns: '10px 1fr 80px 80px 1fr', gap: '0 8px' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-(--text-2) inline-block"/>
+                <span className="text-[12px]">{row.name}</span>
+                <span className="text-right text-[12px] font-bold tabular-nums text-(--text-1)">{row.earned}</span>
+                <span className="text-right text-[11px] text-(--text-3)">
+                  {row.required > 0 ? `${row.required}학점` : '-'}
+                </span>
+                <div className="pl-3">
+                  <div className="h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
+                    <div className="h-full rounded-full bg-(--bar)"
+                         style={{ width: `${row.required > 0 ? Math.min(100, (row.earned/row.required)*100) : 0}%` }}/>
                   </div>
-                );
-              })
-            )}
+                </div>
+              </div>
+            ))}
           </div>
 
         </div>
