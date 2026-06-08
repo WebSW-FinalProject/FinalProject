@@ -10,8 +10,8 @@ async function getFeed({ page, sort, searchType, keyword }) {
   return repo.findPosts({ page, sort, searchType, keyword });
 }
 
-async function getPost(id) {
-  const post = await repo.findPostById(id);
+async function getPost(id, userId = null) {
+  const post = await repo.findPostById(id, userId);
   if (!post) throw createError(404, '게시글을 찾을 수 없습니다.');
   return post;
 }
