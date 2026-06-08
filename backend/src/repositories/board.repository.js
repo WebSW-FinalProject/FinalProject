@@ -71,18 +71,25 @@ async function findPosts({ page = 0, sort = 'latest', searchType, keyword }) {
   return { content: rows, totalElements: total, totalPages: Math.ceil(total / 10), page };
 }
 
-async function findPostById(id) {
+async function findPostById(id, userId = null) {
   const [rows] = await db.query(
     `SELECT p.id, p.title, p.body AS content, p.category,
             p.view_count, p.enroll_date AS create_date, p.modify_date,
             p.user_id AS author_id, u.username AS author_username,
-            (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
+            (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count,
+            (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked_by_me,
+            (SELECT COUNT(*) FROM post_bookmarks b WHERE b.post_id = p.id AND b.user_id = ?) AS bookmarked_by_me
      FROM posts p
      JOIN users u ON p.user_id = u.id
      WHERE p.id = ?`,
-    [id]
+    [userId, userId, id]
   );
-  return rows[0] || null;
+  if (!rows[0]) return null;
+  return {
+    ...rows[0],
+    liked_by_me:      rows[0].liked_by_me > 0,
+    bookmarked_by_me: rows[0].bookmarked_by_me > 0,
+  };
 }
 
 async function insertPost({ authorId, title, content, category }) {
