@@ -17,15 +17,22 @@ router.get('/', wrap(async (req, res) => {
   res.json(result);
 }));
 
-// 마이페이지 - /:post_id 보다 위에 있어야 함
+// 마이페이지
 router.get('/me/data', auth, wrap(async (req, res) => {
   const data = await service.getMyData(req.user.id);
   res.json(data);
 }));
 
+// optional auth: 로그인 여부와 상관없이 글 조회 가능, 로그인 시 liked/bookmarked 반영
+function optionalAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return next();
+  auth(req, res, next);
+}
+
 // 게시글 상세 조회 (조회수 증가 포함)
-router.get('/:post_id', wrap(async (req, res) => {
-  const post = await service.getPost(Number(req.params.post_id));
+router.get('/:post_id', optionalAuth, wrap(async (req, res) => {
+  const post = await service.getPost(Number(req.params.post_id), req.user?.id ?? null);
   await service.increaseViewCount(post.id);
   res.json(post);
 }));
