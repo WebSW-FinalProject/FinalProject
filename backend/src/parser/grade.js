@@ -168,5 +168,44 @@ module.exports = async function parseGradeReport(filePath) {
     break; // 수강신청내역 섹션 하나만
   }
 
-  return { studentId, name, gpa, graduationRequired, totalEarned, majorRequired, courses, enrolledCourses };
+  // 교양 4분야 기준학점
+  const LIBERAL_KEY_MAP = {
+  '개신기초': '개신기초',
+  '자연': '자연이공기초',
+  '일반': '일반',
+  '확대': '확대',
+};
+const liberalRequired = {};
+
+for (let rn = 1; rn <= ws.rowCount; rn++) {
+  const colMap = {};
+  for (let c = 1; c <= ws.columnCount; c++) {
+    let v = ws.getCell(rn, c).value;
+    if (!v) continue;
+    v = typeof v === 'object' && v.text ? String(v.text).trim() : String(v).trim();
+    const norm = v.replace(/[^\w가-힣]/g, '');
+    for (const [keyword, mapped] of Object.entries(LIBERAL_KEY_MAP)) {
+      if (norm.includes(keyword) && !colMap[mapped]) {
+        colMap[mapped] = c;
+      }
+    }
+  }
+
+  if (Object.keys(colMap).length >= 2) {
+    for (let dr = rn + 1; dr <= Math.min(rn + 5, ws.rowCount); dr++) {
+      for (const [area, col] of Object.entries(colMap)) {
+        if (liberalRequired[area] != null) continue;
+        let val = ws.getCell(dr, col).value;
+        if (val == null) continue;
+        val = typeof val === 'object' && val.text ? String(val.text).trim() : String(val).trim();
+        const num = parseInt(val);
+        if (!isNaN(num) && num > 0) liberalRequired[area] = num;
+      }
+      if (Object.keys(liberalRequired).length >= 4) break;
+    }
+    break;
+  }
+}
+
+return { studentId, name, gpa, graduationRequired, totalEarned, majorRequired, liberalRequired, courses, enrolledCourses };
 };

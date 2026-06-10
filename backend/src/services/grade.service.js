@@ -66,6 +66,10 @@ async function parseAndSave(filePath, userId) {
       ['총졸업',  parsed.graduationRequired],
       ['전공필수', parsed.majorRequired?.required],
       ['전공선택', parsed.majorRequired?.elective],
+      ['개신기초교양',     parsed.liberalRequired?.['개신기초']],
+      ['자연이공계기초과학', parsed.liberalRequired?.['자연이공기초']],
+      ['일반교양',         parsed.liberalRequired?.['일반']],
+      ['확대교양',         parsed.liberalRequired?.['확대']],
     ];
     for (const [area, required] of reqList) {
       if (required == null) continue;
