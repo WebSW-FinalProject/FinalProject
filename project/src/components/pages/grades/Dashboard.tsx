@@ -1,249 +1,220 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Clock, CheckCircle2, Calendar } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 import ExcelUploadPopup from './ExcelUploadPopup';
-import type { Semester, Course } from '../../../types';
+import CommunityPreview from './CommunityPreview';
+import { useDashConnect, getCurrentSem } from './dashConnectAPI';
+import {
+  GRADE_SCALE, GRADES, semLabel, toChartY, getChartXs,
+  gradeStyle, dotColor, sumCredits, calcGpa,
+} from './dashHelper';
 
 import gradeImg from '../../../assets/grade.png';
 
-// 졸업요건 (GET /api/graduation-requirements 응답 shape)
-interface GradReq { area: string; required: number; }
 
-// 게시글 (board API 실제 응답 shape)
-interface BoardPost {
-  id: number; title: string; category: string;
-  author_username: string; create_date: string; like_count: number;
-}
+// 메인 컴포넌트 함수 (onGoToBoard)
+function Dashboard({ onGoTimetable, onGoToBoard }:
+  { onGoTimetable?: () => void; onGoToBoard?: (postId?: number) => void }) {
 
+  // 서버 데이터 + API 호출 (useDashConnect hook)
+  const {
+    semesters, allCourses, gradReqs, dataLoading, targetGpa,
+    loadData,
+    deleteSemester,
+    saveSemester:        save_Semester,
+    addCourseToSemester: add_Course,
+    saveCourseEdit:      save_CourseEdit,
+    completeSemester:    complete_Semester,
+    saveTargetGpa:       save_TargetGpa,
+  } = useDashConnect();
 
-// 헬퍼 함수
+  // 목표 GPA 팝업 UI state
+  const [editTargetOpen, setEditTargetOpen] = useState(false);
+  const [targetInput, setTargetInput]       = useState('');
 
-// # 학기 객체 → "2024-1", "2025-2", "2024-하계" 형식 변환 (API 연결 후 year/term 기반으로 변경)
-function semLabel(sem: any): string {
-  const t = sem.term === '1' ? '1' : sem.term === '2' ? '2'
-    : sem.term === 'summer' ? '하계' : '동계';
-  return `${sem.semester_year}-${t}`;
-}
-
-// # SVG 차트 (viewBox y: 8~78, GPA: 3.5~4.5)
-function toChartY(gpa: number) {
-  return Math.max(8, Math.min(78, 70 - (gpa - 3.5) * 50));
-}
-
-// # 학기 수에 따라 SVG X 좌표 동적 배분 (원래 하드코딩 → API 연결로 개수 가변)
-function getChartXs(count: number) {
-  if (count === 0) return [];
-  if (count === 1) return [280];
-  const xs = [];
-  for (let i = 0; i < count; i++) {
-    xs.push(30 + Math.round(i * (500 / (count - 1))));
-  }
-  return xs;
-}
-
-// 학점 등급 스타일 매칭
-function gradeStyle(g: string) {
-  if (g.startsWith('A')) return 'text-(--text-1) font-bold tabular-nums';
-  if (g.startsWith('B')) return 'text-(--text-2) font-bold tabular-nums';
-  if (g === 'F') return 'text-red-500 font-bold tabular-nums';
-  return 'text-(--text-3) font-bold tabular-nums';
-}
-
-// 과목 구분 circle dot
-export function dotColor(cat: string) {
-  if (cat === '전공필수') return 'bg-(--timetable-b-bd)';
-  if (cat === '전공선택') return 'bg-(--timetable-p-bd)';
-  if (cat === '교양선택') return 'bg-(--timetable-c-bd)';
-  return 'bg-(--timetable-g-bd)';
-}
-
-// ISO 날짜 → N분/시간/일 전
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return `${Math.floor(diff / 60000)}분 전`;
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
-}
-
-// 게시글 카테고리 영문 => 한글 태그
-const POST_TAG: Record<string, string> = {
-  GRADUATION: '졸업', JOB_HUNT: '취준', DAILY: '자유', NOTICE: '공지',
-};
-
-// 성적 => 학점 환산
-const GRADE_SCALE: Record<string, number> = {
-  'A+': 4.5, 'A0': 4.0, 'B+': 3.5, 'B0': 3.0,
-  'C+': 2.5, 'C0': 2.0, 'D+': 1.5, 'D0': 1.0, 'F': 0,
-};
-
-// 성적 문자 → 점수 (DB grade_points 미저장 → JS에서 직접 계산)
-function gradeToPoints(g: string | null): number | null {
-  if (!g) return null;
-  return GRADE_SCALE[g] ?? null;
-}
-
-// 과목 배열 → 총 학점 합계
-function sumCredits(courses: any[]) {
-  let total = 0;
-  for (const c of courses) total += c.credit;
-  return total;
-}
-
-// 과목 배열 → GPA 계산 (교수님 지시: JS 비중 최대화, 계산은 프론트에서)
-function calcGpa(courses: any[]) {
-  let totalPoints = 0;
-  let totalCredits = 0;
-  for (const c of courses) {
-    const pts = gradeToPoints(c.grade);
-    if (pts === null) continue;
-    totalPoints  += pts * c.credit;
-    totalCredits += c.credit;
-  }
-  if (totalCredits === 0) return null;
-  return totalPoints / totalCredits;
-}
-
-
-// 메인 컴포넌트 함수
-function Dashboard() {
-
-  // 서버에서 받아온 실데이터
-  const [semesters, setSemesters]     = useState<Semester[]>([]);
-  const [allCourses, setAllCourses]   = useState<Course[]>([]);
-  const [posts, setPosts]             = useState<BoardPost[]>([]);
-  const [gradReqs, setGradReqs]       = useState<GradReq[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-
-  // 엑셀 업로드 팝업 : 로드 완료 후 학기가 없으면 자동 표시
+  // 엑셀 업로드 팝업 : 로드 완료 후 학기 없으면 자동 표시(강제. X버튼 없음)
   const uploadOpen = !dataLoading && semesters.length === 0;
 
   // 열려있는 학기 토글 블럭 useState
   const [expandedSems, setExpandedSems] = useState<number[]>([]);
   // 현재 학기 성적 입력값 { 강의id : "A+" }
   const [grades, setGrades] = useState<Record<number, string>>({});
+  // 이번 학기 과목별 목표 성적 { 강의id : "A+" } (목표 성적 섹션에서 사용)
+  const [targetGrades, setTargetGrades] = useState<Record<number, string>>({});
 
   // 학기 추가 팝업
-  //   (팝업관리, 해당학기 이름:1-2..(SemName), 해당학기 과목배열(SemCourses))
+  //   (팝업관리, 해당학기 연도(newSemYear), 학기구분(newSemTerm), 해당학기 과목배열(newSemCourses))
   const [addSemOpen, setAddSemOpen]   = useState(false);
-  const [newSemName, setNewSemName]   = useState('');
+  const [newSemYear, setNewSemYear]   = useState(String(new Date().getFullYear()));
+  const [newSemTerm, setNewSemTerm]   = useState<'1'|'2'|'summer'|'winter'>('1');
   const [newSemCourses, setNewSemCourses] = useState<{
-    name: string; category: string; credit: string
+    name: string; category: string; credit: string; grade: string
   }[]>([]);
 
+  // 기존 학기에 과목 추가 state 관리
+  const [addCourseFor, setAddCourseFor] = useState<number | null>(null); // 열린 학기 id
+  const [newCourse, setNewCourse] = useState(
+    { name: '', category: '전공필수', credit: '3', grade: '' }
+  );
 
-  // 학기 + 과목 전체 로드 (마운트 시, 업로드 완료 후 재호출)
-  async function loadData() {
-    const token = localStorage.getItem('token') || '';
-    setDataLoading(true);
-    try {
-      const semRes = await fetch('http://localhost:3000/api/semesters', {
-        headers: { Authorization: 'Bearer ' + token },
-      });
+  // 기존 과목 수정 (인라인 폼) state 관리
+  const [editCourseId, setEditCourseId]     = useState<number | null>(null);
+  const [editCourseData, setEditCourseData] = useState(
+    { name: '', category: '전공필수', credit: '3', grade: '' }
+  );
 
-      if (semRes.status === 401) {
-        // 토큰 만료 시 자동 로그아웃
-        localStorage.removeItem('token');
-        window.location.reload();
-        return;
-      }
-      if (!semRes.ok) throw new Error('서버 오류: ' + semRes.status);
 
-      const sems: any[] = await semRes.json();
-      setSemesters(sems);
+  // #### 헬퍼 함수 (hook 호출:Back API connect + UI state 정리) 
 
-      if (sems.length === 0) {
-        // 엑셀 파싱 전이면 업로드 팝업 강제 표시 (uploadOpen은 derived state)
-        return;
-      }
+  // 학기 추가 - 저장버튼 연결(백에 데이터 완전히 저장)
+  async function saveSemester() {
+    const year = parseInt(newSemYear, 10);
+    if (isNaN(year) || year < 2000 || year > 2050) return;
 
-      // 모든 학기 과목 조회 (학기별 순차 호출)
-      const allCoursesArr: Course[] = [];
-      for (const s of sems) {
-        const res  = await fetch('http://localhost:3000/api/semesters/' + s.id + '/courses', {
-          headers: { Authorization: 'Bearer ' + token },
-        });
-        const data = await res.json();
-        allCoursesArr.push(...data);
-      }
-      setAllCourses(allCoursesArr);
+    const ok = await save_Semester(
+      year, newSemTerm, newSemCourses, semesters
+    ); // 백엔드로 전송
 
-      // 졸업요건 조회 (총졸업, 전공필수, 전공선택)
-      const reqRes  = await fetch('http://localhost:3000/api/graduation', {
-        headers: { Authorization: 'Bearer ' + token },
-      });
-      const reqData = await reqRes.json();
-      setGradReqs(reqData);
-    } catch (e) {
-      console.error('데이터 로드 실패:', e);
-    } finally {
-      setDataLoading(false);
+    if (ok) { // 보냈으면 UI 정리하기.
+      setAddSemOpen(false);
+      setNewSemYear(String(new Date().getFullYear()));
+      setNewSemTerm('1');
+      setNewSemCourses([]);
     }
   }
 
-  // 최신 게시글 미리보기 로드 (인증 불필요 - 공개 API)
-  async function loadPosts() {
-    try {
-      const res = await fetch('http://localhost:3000/api/board?page=0&sort=latest');
-      const data = await res.json();
-      setPosts(data.content ?? []);
-    } catch (e) {
-      console.error('게시글 로드 실패:', e);
+  // 과목 추가(토글 최하단) - 과목 추가하고(백 연결) 인라인 폼 초기화
+  async function addCourseToSemester(semId: number) {
+    const ok = await add_Course(semId, newCourse);
+
+    if (ok) {
+      setNewCourse(
+        { name: '', category: '전공필수', credit: '3', grade: '' }
+      );
+      setAddCourseFor(null);
     }
   }
 
-  useEffect(() => {
-    loadData();
-    loadPosts();
-  }, []);
+  // 기존 과목 수정 - 백에 수정정보 보내고(PUT) 인라인 폼 닫기
+  async function saveCourseEdit(semId: number, courseId: number) {
+    const ok = await save_CourseEdit(semId, courseId, editCourseData);
+    if (ok) setEditCourseId(null);
+  }
+
+  // 학기 완료 처리 버튼 : 백에 보내고(PUT) 성적 입력 초기화
+  async function completeSemester(semId: number, semCoursesList: any[]) {
+    const ok = await complete_Semester(semId, semCoursesList, grades);
+    if (ok) setGrades({}); 
+  }
+
+  // 목표 GPA 저장 : 백에 보내고 팝업 닫기
+  async function saveTargetGpa() {
+    const val = parseFloat(targetInput);
+    if (isNaN(val) || val < 0 || val > 4.5) return;
+    const ok = await save_TargetGpa(val);
+    if (ok) setEditTargetOpen(false);
+  }
 
 
-  // 실데이터 연결 (JS 계산)
 
-  // 학기별 GPA 계산 + courses attach (DB grade_points 미사용 → GRADE_SCALE로 직접 환산)
+  // #### 데이터 처리! (백에 구현 안한 계산 로직)
+
+  // 학기별 GPA 계산 + 학기에 맞는 과목데이터 붙이기
   const semestersWithGpa = semesters.map(s => {
     const courses = allCourses.filter(c => c.semester_id === s.id);
     const gpa = calcGpa(courses);
-    return { ...s, gpa, courses };
+    return { ...s, gpa, dbGpa: s.gpa, courses }; 
   });
 
-  // 성적 입력되지 않은(gpa === null) 학기를 현학기로 지정, 없으면 마지막 학기
-  const currentSem = semestersWithGpa.find(s => s.gpa === null)
-                  ?? semestersWithGpa[semestersWithGpa.length - 1];
+  // 오늘날짜
+  //  => 현재 학기 계산 (getCurrentSem: dashConnectAPI.ts import)
+  const { year: todayYear, term: todayTerm } = getCurrentSem();
+
+
+  // 오늘날짜 기준으로 학기 찾기
+  //  => 없으면 null-gpa 중 가장 최근 => 없으면 마지막
+  let currentSem = semestersWithGpa.find(s => s.semester_year 
+                      === todayYear && s.term === todayTerm);
+  if (!currentSem) {
+    currentSem = [...semestersWithGpa].reverse()
+                  .find(s => s.dbGpa === null);
+  }
+  if (!currentSem) {
+    currentSem = semestersWithGpa[semestersWithGpa.length - 1];
+  }
+  
+
   // 현학기(currentSem)의 모든 과목이 이번 학기 수강 과목
   const currentCourses = currentSem
     ? allCourses.filter(c => c.semester_id === currentSem.id)
     : [];
 
-  // 성적이 입력된 과목만 => 예상 GPA 계산
+  // 이수 완료 과목 (F랑 null 제외, P 포함)
+  const completedCourses = allCourses.filter(c => c.grade && c.grade !== 'F');
+
+  // 성적이 입력된 과목만 => 이번학기 예상 GPA 계산
   const filledCourses = currentCourses.filter(c => grades[c.id]);
   let expectedGPA: number | null = null;
   if (filledCourses.length > 0) {
     let pts = 0, cr = 0;
-    for (const c of filledCourses) { pts += GRADE_SCALE[grades[c.id]] * c.credit; cr += c.credit; }
+    for (const c of filledCourses) {
+       let temp = GRADE_SCALE[grades[c.id]] * c.credit; 
+       cr += c.credit;
+       pts += temp; 
+      }
     expectedGPA = pts / cr;
   }
 
-  // SVG 차트용 데이터 (gpa 있는 학기만)
+  // 이번학기 입력값(예측 혹은 입력완료) + 과거 완료 과목 기반
+  //  => 전체/전공/교양 누적 예상 GPA 계산
+  const predictedCurrent = currentCourses
+    .filter(c => grades[c.id])
+    .map(c => ({ ...c, grade: grades[c.id] }));
+
+
+  const allWithPredicted   = [...completedCourses, ...predictedCurrent];
+  const expectedTotalGpa   = filledCourses.length > 0 ? calcGpa(allWithPredicted) : null;
+
+  const expectedMajorGpa   = filledCourses.length > 0
+    ? calcGpa(allWithPredicted.filter(c => c.division === '전공')) : null;
+
+  const expectedLiberalGpa = filledCourses.length > 0
+    ? calcGpa(allWithPredicted.filter(c => c.division === '교양')) : null;
+
+
+
+  // SVG 차트용 데이터 (AI 도움)
   const chartSems = semestersWithGpa.filter(s => s.gpa !== null);
   const chartXs   = getChartXs(chartSems.length);
   const chartData = chartSems.map((s, i) => ({ x: chartXs[i], y: toChartY(s.gpa as number), gpa: s.gpa as number }));
-  const linePath  = chartData.map(p => `${p.x},${p.y}`).join(' ');
-  const fillPath  = chartData.length > 0
-    ? `${linePath} ${chartData.at(-1)!.x},78 ${chartData[0].x},78`
+  const chartSemsAll  = expectedGPA !== null && currentSem
+    ? [...chartSems, { ...currentSem, gpa: expectedGPA }]
+    : chartSems;
+  const chartXsAll    = getChartXs(chartSemsAll.length);
+  const chartDataAll  = chartSemsAll.map((s, i) => ({
+    x: chartXsAll[i], y: toChartY(s.gpa as number), gpa: s.gpa as number,
+    isPreview: expectedGPA !== null && i === chartSemsAll.length - 1 && currentSem != null,
+  }));
+  const completedPts  = chartDataAll.filter(p => !p.isPreview);
+  const completedLP   = completedPts.map(p => `${p.x},${p.y}`).join(' ');
+  const fillLPAll = chartDataAll.length > 0
+    ? `${chartDataAll.map(p => `${p.x},${p.y}`).join(' ')} ${chartDataAll.at(-1)!.x},78 ${chartDataAll[0].x},78`
     : '';
+  const previewPt       = chartDataAll.find(p => p.isPreview) ?? null;
+  const lastCompletedPt = completedPts[completedPts.length - 1] ?? null;
 
   // 실데이터 연결
   const gpaList = chartData.map(p => p.gpa);
   const maxGPA  = gpaList.length > 0 ? Math.max(...gpaList) : 0;
   const minGPA  = gpaList.length > 0 ? Math.min(...gpaList) : 0;
-  let avgGPA = 0;
+
+  let avgGPA = 0; // 평균 학점 계산 
   if (gpaList.length > 0) {
     let sum = 0;
-    for (const g of gpaList) sum += g;
+    for (const i of gpaList) sum += i;
     avgGPA = sum / gpaList.length;
-  }
+  } 
 
 
   // 졸업요건 조회 헬퍼 (area 이름으로 required 값 찾기)
@@ -251,10 +222,7 @@ function Dashboard() {
     return gradReqs.find(r => r.area === area)?.required ?? 0;
   }
 
-  // 이수 완료 과목 (F 제외, null 제외 — P 포함)
-  const completedCourses = allCourses.filter(c => c.grade && c.grade !== 'F');
-
-  // 이수학점 계산 (JS에서 계산 — 교수님 지시)
+  // 이수학점 계산
   const earnedTotal    = sumCredits(completedCourses);
   const majorEarned    = sumCredits(completedCourses.filter(c => c.division === '전공'));
   const liberalEarned  = sumCredits(completedCourses.filter(c => c.division === '교양'));
@@ -288,8 +256,11 @@ function Dashboard() {
     }
   }
 
+  
+  // SVG 목표 GPA 기준선 Y 좌표 (DB에서 로드한 targetGpa 기반,)
+  const goalLineY = toChartY(targetGpa);
 
-  // 로딩 중 표시
+  // 로딩 중 상태 UI 매핑
   if (dataLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-(--text-3) text-sm">
@@ -378,8 +349,10 @@ function Dashboard() {
               {[
                 { label: '이수학점', value: String(earnedTotal),   sub: '/ ' + (gradTotal || 140),    barPct: gradPct || Math.round(earnedTotal / 140 * 100), badge: null },
                 { label: '전공',     value: String(majorEarned),  sub: '/ ' + (majorReqTotal || 85), barPct: null, badge: majorReqTotal > majorEarned ? (majorReqTotal - majorEarned) + ' 잔여' : '완료' },
-                { label: '교양',     value: String(liberalEarned), sub: '/ 42',                       barPct: null, badge: liberalEarned >= 42 ? '거의 완료' : (42 - liberalEarned) + '학점 잔여' },
-                { label: '목표 GPA', value: '4.2', sub: 'A+ 2개', barPct: null, badge: '달성 가능' },
+                { label: '교양',     value: String(liberalEarned), sub: '/ 42',                       barPct: null, badge: liberalEarned >= 42 ? '완료 ✓' : (42 - liberalEarned) + '학점 잔여' },
+                { label: '목표 GPA', value: targetGpa.toFixed(1), sub: avgGPA > 0 ? '현재 ' + avgGPA.toFixed(2) : '-',
+                  barPct: null,
+                  badge: avgGPA >= targetGpa ? '달성 ✓' : avgGPA >= targetGpa - 0.3 ? '달성 가능' : (targetGpa - avgGPA).toFixed(1) + ' 부족' },
               ].map(box => (
 
                 <div key={box.label}
@@ -519,42 +492,61 @@ function Dashboard() {
                 <text x={8} y={49} fontSize={9} fill="var(--text-3)" fontFamily="Inter" textAnchor="end">4.0</text>
                 <text x={8} y={74} fontSize={9} fill="var(--text-3)" fontFamily="Inter" textAnchor="end">3.5</text>
 
-                {/* 목표 GPA 기준선 (임시 하드코딩 4.2) */}
-                <line x1="20" y1="35" x2="540" y2="35" stroke="var(--bar)" strokeWidth={1.5} strokeDasharray="5 3" opacity={0.75}/>
-                <text x={543} y={39} fontSize={8} fill="var(--bar)" fontFamily="Inter" fontWeight={700}>목표</text>
+                {/* 목표 GPA 기준선 (DB에서 로드한 targetGpa 기반, 수정 버튼으로 변경 가능) */}
+                <line x1="20" y1={goalLineY} x2="540" y2={goalLineY}
+                      stroke="var(--bar)" strokeWidth={1.5} strokeDasharray="5 3" opacity={0.75}/>
+                <text x={543} y={goalLineY + 4} fontSize={8} fill="var(--bar)" fontFamily="Inter" fontWeight={700}>목표</text>
 
-                {/* fill + line */}
-                {chartData.length > 0 && (
+                {/* fill + line (완료 구간 + 예상 포인트 점선) */}
+                {chartDataAll.length > 0 && (
                   <>
-                    <polygon points={fillPath} fill="url(#chartfill)"/>
-                    <polyline points={linePath} fill="none" stroke="var(--accent)"
-                              strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+                    <polygon points={fillLPAll} fill="url(#chartfill)"/>
+                    {completedPts.length > 0 && (
+                      <polyline points={completedLP} fill="none" stroke="var(--accent)"
+                                strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+                    )}
+
+                    {/* 마지막 완료 포인트 → 예상 포인트 점선 연결 */}
+                    {previewPt && lastCompletedPt && (
+                      <line x1={lastCompletedPt.x} y1={lastCompletedPt.y}
+                            x2={previewPt.x} y2={previewPt.y}
+                            stroke="var(--accent)" strokeWidth={2} strokeDasharray="4 3" opacity={0.65}/>
+                    )}
                   </>
                 )}
 
-                {/* 점 + 라벨 */}
-                {chartData.map((p, i) => (
+                {/* 점 + 라벨 (완료 + 예상 포인트 포함) */}
+                {chartDataAll.map((p, i) => (
                   <g key={i}>
-                    <circle cx={p.x} cy={p.y} r={i === chartData.length - 1 ? 5 : 4}
-                      fill={i === chartData.length - 1 ? 'var(--accent)' : 'var(--surface)'}
-                      stroke="var(--accent)" strokeWidth={i === chartData.length - 1 ? 0 : 2}/>
+                    {p.isPreview ? (
+                      <circle cx={p.x} cy={p.y} r={4.5}
+                        fill="var(--surface)" stroke="var(--accent)"
+                        strokeWidth={1.5} strokeDasharray="3 2" opacity={0.75}/>
+                    ) : (
+                      <circle cx={p.x} cy={p.y} r={i === completedPts.length - 1 ? 5 : 4}
+                        fill={i === completedPts.length - 1 ? 'var(--accent)' : 'var(--surface)'}
+                        stroke="var(--accent)" strokeWidth={i === completedPts.length - 1 ? 0 : 2}/>
+                    )}
 
                     <text x={p.x} y={p.y - 7} textAnchor="middle" fontSize={9}
-                      fill={p.gpa === maxGPA ? 'var(--accent)' : 'var(--text-2)'}
-                      fontWeight={p.gpa === maxGPA ? 700 : 400} fontFamily="Inter">
-                      {p.gpa.toFixed(1)}
+                      fill={p.isPreview ? 'var(--accent)' : p.gpa === maxGPA ? 'var(--accent)' : 'var(--text-2)'}
+                      fontWeight={p.gpa === maxGPA || p.isPreview ? 700 : 400}
+                      fontFamily="Inter" opacity={p.isPreview ? 0.75 : 1}>
+                      {p.isPreview ? '~' + p.gpa.toFixed(1) : p.gpa.toFixed(1)}
                     </text>
 
                     <text x={p.x} y={89} textAnchor="middle" fontSize={10}
-                      fill={i === chartData.length - 1 ? 'var(--accent)' : 'var(--text-3)'}
-                      fontFamily="Inter" fontWeight={i === chartData.length - 1 ? 700 : 400}>
-                      {i === chartData.length - 1 ? '현재' : semLabel(chartSems[i])}
+                      fill={p.isPreview ? 'var(--accent)' : i === completedPts.length - 1 ? 'var(--accent)' : 'var(--text-3)'}
+                      fontFamily="Inter"
+                      fontWeight={p.isPreview || i === completedPts.length - 1 ? 700 : 400}
+                      opacity={p.isPreview ? 0.75 : 1}>
+                      {p.isPreview ? '예상' : i === completedPts.length - 1 ? '현재' : chartSems[i] ? semLabel(chartSems[i]) : ''}
                     </text>
                   </g>
                 ))}
               </svg>
 
-              {chartData.length === 0 && (
+              {chartDataAll.length === 0 && (
                 <div className="text-center text-[11px] text-(--text-3) py-4">
                   성적 데이터가 없습니다
                 </div>
@@ -601,7 +593,7 @@ function Dashboard() {
                             flex items-center gap-2 text-[11px] text-(--text-2)">
               <Clock size={12} className="text-(--accent) shrink-0" />
               <span> <b className="text-(--text-1)">자료구조 A+, 알고리즘 A0
-                    </b> 이상이면 이번 학기 목표 GPA 4.2 달성 가능. </span>
+                    </b> 이상이면 이번 학기 목표 GPA {targetGpa.toFixed(1)} 달성 가능. </span>
               <span className="ml-auto px-1.5 py-0.5 rounded-full text-[8px] font-semibold
                               bg-(--accent-bg) text-(--accent)
                                whitespace-nowrap shrink-0">달성 가능 ✓</span>
@@ -610,30 +602,42 @@ function Dashboard() {
 
             {/* 학기 블럭 : API 데이터 */}
             {semestersWithGpa.map((sem) => {
-              const isCurrent  = sem.gpa === null; // 현재 학기인지 여부 검사 (성적입력여부로..)
+              const isCurrent  = sem.id === currentSem?.id; // id로 비교 — gpa=null 학기 중복 방지
               const isOpen     = expandedSems.includes(sem.id); // 열려있는지 확인 (expandedSems search)
-              const semCourses = sem.courses.filter((c: any) => c.grade !== null);
+              const semCourses = sem.courses; // grade null 포함 — 신규 추가 과목도 표시
                                 // 각 강의들 중 현재 탐색중인 학기의 과목들 catch ..
 
-              // 교양/전공 GPA 계산 (학기 헤더 우측 표시용)
+              // 교양/전공 GPA 계산 (학기 헤더 우측 표시용 — 완료 학기만)
               const libCourses   = sem.courses.filter((c: any) => c.division === '교양');
               const majorCourses = sem.courses.filter((c: any) => c.division === '전공');
               const libGPA   = calcGpa(libCourses)?.toFixed(1)   ?? '-';
               const majorGPA = calcGpa(majorCourses)?.toFixed(1) ?? '-';
 
+              // 이 학기에서 입력된 성적 수 (완료 버튼 표시 조건)
+              const thisFilled = semCourses.filter((c: any) => grades[c.id]);
+
+              // 이 학기 예상 GPA (성적 입력 시 계산)
+              let thisExpectedGPA: number | null = null;
+              if (thisFilled.length > 0) {
+                let pts = 0, cr = 0;
+                for (const c of thisFilled as any[]) { 
+                  pts += GRADE_SCALE[grades[c.id]] * c.credit; cr += c.credit;
+                 }
+                thisExpectedGPA = pts / cr;
+              }
+
               return (
                 <div key={sem.id} className="border-b border-(--border) last:border-none">
                   {/* key 인 semester id로 div 구분! */}
-                  <button
+                  <div
                     onClick={() => toggle(sem.id)}
-                    className={`w-full px-4 py-2.5 flex items-center
+                    className={`w-full px-4 py-2.5 flex items-center cursor-pointer
                                 justify-between transition-colors
                                 ${isCurrent ? 'bg-(--accent-bg) hover:bg-(--surface-2)'
                                             : 'hover:bg-(--surface-2)'}`} >
 
                     <div className="flex items-center gap-3.5">
-                      {isCurrent
-                      ? (
+                      {isCurrent ? (
                         <>
                           <span className="w-14 text-[11px] font-bold text-(--accent)">{semLabel(sem)}</span>
                           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold
@@ -642,8 +646,7 @@ function Dashboard() {
                             {sem.courses.length}과목 · {sumCredits(sem.courses)}학점 · 성적 발표 전
                           </span>
                         </>
-                      )
-                      : (
+                      ) : (
                         <>
                           <span className="w-14 text-[11px] font-bold text-(--text-3)">{semLabel(sem)}</span>
                           <span className="text-lg font-bold tabular-nums text-(--text-1) leading-none"
@@ -655,6 +658,7 @@ function Dashboard() {
                       )}
                     </div>
 
+                    {/* 완료 학기만 교양/전공 GPA 표시 */}
                     {!isCurrent && (
                       <div className="flex items-center gap-3.5 text-[11px] text-(--text-2)">
                         <span>교양 <b>{libGPA}</b></span>
@@ -662,67 +666,149 @@ function Dashboard() {
                       </div>
                     )}
 
-                    <svg
-                      className={`w-3 h-3 text-(--text-3) transition-transform
-                                  ${isOpen ? 'rotate-180' : ''}`}
-                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M19 9l-7 7-7-7"/>
-                    </svg>
+                    <div className="flex items-center gap-2">
+                      {/* 학기 삭제 버튼 */}
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteSemester(sem.id, semLabel(sem)); }}
+                        className="text-[10px] text-(--text-3) hover:text-red-400
+                                   transition-colors px-1.5 py-0.5 rounded border
+                                   border-(--border) hover:border-red-300">
+                        삭제
+                      </button>
+                      <svg
+                        className={`w-3 h-3 text-(--text-3) transition-transform
+                                    ${isOpen ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M19 9l-7 7-7-7"/>
+                      </svg>
+                    </div>
 
-                  </button>
+                  </div>
 
                   {/* 토글 내용물 구성 */}
                   {isOpen && (
                     <div className="overflow-hidden">
                       {isCurrent ? (
-                        // 강의 데이터 있고, 현재 학기이면(isCurrent)
+                        // 현재 학기 — 성적 입력 UI
                         <div className="px-4 pb-3">
                           <p className="text-[10px] text-(--text-3) font-semibold mb-1.5 mt-2">과목별 성적 입력</p>
                           <div className="flex flex-col gap-1">
-                            {currentCourses.map((c: any) => (
-                              // notion 필기 참조!
-                              <div key={c.id}
-                                  className="grid items-center gap-1.5 px-2 py-1
-                                             bg-(--inner-bg) rounded-lg"
-                                  style={{ gridTemplateColumns: '1fr 36px 70px' }}>
+                            {semCourses.map((c: any) => (
+                              editCourseId === c.id ? (
 
-                                <span className="text-[11px] font-medium text-(--text-1)">{c.name}</span>
-                                <span className="text-[10px] text-(--text-3) text-right">{c.credit}cr</span>
+                                // 수정 inline 폼
+                                <div key={c.id} className="flex flex-col gap-1 bg-(--inner-bg) rounded-lg px-2 py-1.5">
+                                  <div className="grid gap-1 items-center"
+                                       style={{ gridTemplateColumns: '1fr 90px 34px 54px' }}>
+                                    <input
+                                      value={editCourseData.name}
+                                      onChange={e => setEditCourseData(prev => ({ ...prev, name: e.target.value }))}
+                                      className="px-1.5 py-0.5 text-[11px] rounded bg-(--surface) border border-(--border)
+                                                 text-(--text-1) focus:outline-none focus:border-(--text-2) transition-colors" />
+                                    <select
+                                      value={editCourseData.category}
+                                      onChange={e => setEditCourseData(prev => ({ ...prev, category: e.target.value }))}
+                                      className="px-1 py-0.5 text-[10px] rounded bg-(--surface) border border-(--border)
+                                                 text-(--text-1) focus:outline-none cursor-pointer">
+                                      {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                                    </select>
+                                    <input
+                                      value={editCourseData.credit}
+                                      onChange={e => setEditCourseData(prev => ({ ...prev, credit: e.target.value }))}
+                                      className="px-1 py-0.5 text-[10px] text-center rounded bg-(--surface) border border-(--border)
+                                                 text-(--text-1) focus:outline-none" />
+                                    <select
+                                      value={editCourseData.grade}
+                                      onChange={e => setEditCourseData(prev => ({ ...prev, grade: e.target.value }))}
+                                      className="px-1 py-0.5 text-[10px] rounded bg-(--surface) border border-(--border)
+                                                 text-(--text-1) focus:outline-none cursor-pointer">
+                                      <option value="">-</option>
+                                      {GRADES.map(g => <option key={g}>{g}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="flex gap-1 justify-end">
+                                    <button onClick={() => setEditCourseId(null)}
+                                            className="text-[9px] px-2 py-0.5 rounded border border-(--border)
+                                                       text-(--text-3) hover:bg-(--surface-2) transition-colors">취소</button>
+                                    <button onClick={() => saveCourseEdit(sem.id, c.id)}
+                                            className="text-[9px] px-2 py-0.5 rounded bg-(--text-1) text-(--surface)
+                                                       hover:opacity-85 transition-opacity font-semibold">저장</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                // notion 필기 참조!
+                                <div key={c.id}
+                                    className="grid items-center gap-1.5 px-2 py-1
+                                               bg-(--inner-bg) rounded-lg group"
+                                    style={{ gridTemplateColumns: '1fr 36px 70px 22px' }}>
 
-                                <select
-                                  value={grades[c.id] ?? ''}
-                                  onChange={e => setGrades(prev => ({
-                                     ...prev,
-                                     [c.id]: e.target.value
-                                  }))}
-                                  className="text-[11px] bg-(--surface) border border-(--border)
-                                             rounded px-1 py-0.5
-                                            text-(--text-1) cursor-pointer focus:outline-none" >
+                                  <span className="text-[11px] font-medium text-(--text-1)">{c.name}</span>
+                                  <span className="text-[10px] text-(--text-3) text-right">{c.credit}cr</span>
 
-                                  <option value="">-</option>
+                                  <select
+                                    value={grades[c.id] ?? ''}
+                                    onChange={e => setGrades(prev => ({
+                                       ...prev,
+                                       [c.id]: e.target.value
+                                    }))}
+                                    className="text-[11px] bg-(--surface) border border-(--border)
+                                               rounded px-1 py-0.5
+                                              text-(--text-1) cursor-pointer focus:outline-none" >
 
-                                  {Object.keys(GRADE_SCALE).map(g => (
-                                    <option key={g}>{g}</option>
-                                    ))}
+                                    <option value="">-</option>
 
-                                </select>
+                                    {GRADES.map(g => <option key={g}>{g}</option>)}
 
-                              </div>
+                                  </select>
+
+                                  <button
+                                    onClick={() => {
+                                      setEditCourseId(c.id);
+                                      setEditCourseData({ name: c.name, category: c.category || '전공필수', credit: String(c.credit), grade: c.grade || '' });
+                                    }}
+                                    className="text-[9px] text-(--text-3) hover:text-(--text-1)
+                                               opacity-0 group-hover:opacity-100 transition-opacity">
+                                    수정
+                                  </button>
+
+                                </div>
+                              )
                             ))}
                           </div>
 
+                          {/* 예상 GPA 박스 */}
                           <div className="mt-2 px-2.5 py-2 bg-(--accent-bg) rounded-lg
-                                          flex justify-between items-center
                                           border border-(--badge-neutral-bg)">
-                            <span className="text-[11px] text-(--text-2)">예상 GPA</span>
-                            <div className="flex items-baseline gap-0.5">
-                              <span className="text-[17px] font-bold text-(--accent) tabular-nums"
-                                    style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-                                {expectedGPA !== null ? expectedGPA.toFixed(2) : '-.-'}
-                              </span>
-                              <span className="text-[10px] text-(--text-3)">/ 4.5</span>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-(--text-2)">이번학기 예상</span>
+                              <div className="flex items-baseline gap-0.5">
+                                <span className="text-[17px] font-bold text-(--accent) tabular-nums"
+                                      style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
+                                  {thisExpectedGPA !== null ? thisExpectedGPA.toFixed(2) : '-.-'}
+                                </span>
+                                <span className="text-[10px] text-(--text-3)">/ 4.5</span>
+                              </div>
                             </div>
+                            {/* 현재 학기만 전체/전공/교양 누적 예상 표시 */}
+                            {isCurrent && expectedTotalGpa !== null && (
+                              <div className="border-t border-(--badge-neutral-bg) mt-1.5 pt-1.5
+                                              flex gap-3.5 text-[11px] text-(--text-3)">
+                                <span>전체 <b className="text-(--text-1) tabular-nums">{expectedTotalGpa.toFixed(2)}</b></span>
+                                <span>전공 <b className="text-(--text-1) tabular-nums">{expectedMajorGpa?.toFixed(2) ?? '-'}</b></span>
+                                <span>교양 <b className="text-(--text-1) tabular-nums">{expectedLiberalGpa?.toFixed(2) ?? '-'}</b></span>
+                              </div>
+                            )}
                           </div>
+
+                          {/* 학기 완료 버튼 — 모든 과목 성적 입력 시 표시 */}
+                          {isCurrent && thisFilled.length === semCourses.length && semCourses.length > 0 && (
+                            <button
+                              onClick={() => completeSemester(sem.id, semCourses)}
+                              className="w-full mt-2 py-2 rounded-lg text-[12px] font-semibold
+                                         bg-(--accent) text-white hover:opacity-85 transition-opacity">
+                              이번 학기 완료 처리
+                            </button>
+                          )}
                         </div>
                       ) : semCourses.length > 0 ? (
                         // 현재 학기가 아니지만, 데이터 있으면 :
@@ -734,13 +820,66 @@ function Dashboard() {
                                 <p className="text-[9px] font-bold text-(--text-3)
                                               uppercase tracking-widest mb-1.5">{div}</p>
                                 <div className="flex flex-col gap-1 text-[11px]">
+
                                   {divCourses.map((c: any) => (
+                                    editCourseId === c.id ? (
+                                      // 수정 인라인 폼 ( 필요에 의해! 과목 추가 후 수정하는 폼 추가함. )
 
-                                    <div key={c.id} className="flex justify-between">
-                                      <span className="text-(--text-2)">{c.name}</span>
-                                      {c.grade && <span className={gradeStyle(c.grade)}>{c.grade}</span>}
-                                    </div>
-
+                                      <div key={c.id} className="flex flex-col gap-1 py-0.5">
+                                        <div className="grid gap-0.5 items-center"
+                                             style={{ gridTemplateColumns: '1fr 72px 26px 46px' }}>
+                                          <input
+                                            value={editCourseData.name}
+                                            onChange={e => setEditCourseData(prev => ({ ...prev, name: e.target.value }))}
+                                            className="px-1.5 py-0.5 text-[10px] rounded bg-(--surface) border border-(--border)
+                                                       text-(--text-1) focus:outline-none focus:border-(--text-2) transition-colors" />
+                                          <select
+                                            value={editCourseData.category}
+                                            onChange={e => setEditCourseData(prev => ({ ...prev, category: e.target.value }))}
+                                            className="px-0.5 py-0.5 text-[9px] rounded bg-(--surface) border border-(--border)
+                                                       text-(--text-1) focus:outline-none cursor-pointer">
+                                            {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                                          </select>
+                                          <input
+                                            value={editCourseData.credit}
+                                            onChange={e => setEditCourseData(prev => ({ ...prev, credit: e.target.value }))}
+                                            className="px-1 py-0.5 text-[9px] text-center rounded bg-(--surface) border border-(--border)
+                                                       text-(--text-1) focus:outline-none" />
+                                          <select
+                                            value={editCourseData.grade}
+                                            onChange={e => setEditCourseData(prev => ({ ...prev, grade: e.target.value }))}
+                                            className="px-0.5 py-0.5 text-[9px] rounded bg-(--surface) border border-(--border)
+                                                       text-(--text-1) focus:outline-none cursor-pointer">
+                                            <option value="">-</option>
+                                            {GRADES.map(g => <option key={g}>{g}</option>)}
+                                          </select>
+                                        </div>
+                                        <div className="flex gap-1 justify-end">
+                                          <button onClick={() => setEditCourseId(null)}
+                                                  className="text-[9px] px-1.5 py-0.5 rounded border border-(--border)
+                                                             text-(--text-3) hover:bg-(--surface-2) transition-colors">취소</button>
+                                          <button onClick={() => saveCourseEdit(sem.id, c.id)}
+                                                  className="text-[9px] px-1.5 py-0.5 rounded bg-(--text-1) text-(--surface)
+                                                             hover:opacity-85 transition-opacity font-semibold">저장</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div key={c.id} className="flex justify-between items-center group">
+                                        <span className="text-(--text-2) truncate mr-1">{c.name}</span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          {c.grade && <span className={gradeStyle(c.grade)}>{c.grade}</span>}
+                                          <button
+                                            onClick={() => {
+                                              setEditCourseId(c.id);
+                                              setEditCourseData({ name: c.name, category: c.category || '전공필수', credit: String(c.credit), grade: c.grade || '' });
+                                            }}
+                                            className="text-[9px] text-(--text-3) hover:text-(--text-1)
+                                                       opacity-0 group-hover:opacity-100 transition-opacity">
+                                            수정
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )
                                   ))}
                                 </div>
                               </div>
@@ -754,6 +893,82 @@ function Dashboard() {
                           강의 데이터 없음
                         </div>
                       )}
+
+                      {/* 과목 추가 버튼 / 인라인 폼 (모든 학기 공통) */}
+                      <div className="px-4 pt-2 pb-3 border-t border-(--border)">
+                        {addCourseFor === sem.id ? (
+                          <div className="bg-(--surface-2) rounded-xl p-3 space-y-2">
+                            <div className="grid gap-1.5 items-center"
+                                 style={{ gridTemplateColumns: '1fr 96px 48px 60px 22px' }}>
+                              {/* 과목명 */}
+                              <input
+                                value={newCourse.name}
+                                onChange={e => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="과목명 입력"
+                                autoFocus
+                                className="px-2.5 py-1.5 text-[11px] rounded-lg bg-(--surface) border
+                                           border-(--border) text-(--text-1) focus:outline-none
+                                           focus:border-(--text-2) transition-colors placeholder:text-(--text-3)"
+                              />
+
+                              {/* 구분 */}
+                              <select
+                                value={newCourse.category}
+                                onChange={e => setNewCourse(prev => ({ ...prev, category: e.target.value }))}
+                                className="px-2 py-1 text-[11px] rounded-lg bg-(--surface) border
+                                           border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
+                                {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                              </select>
+
+                              {/* 학점 */}
+                              <input
+                                value={newCourse.credit}
+                                onChange={e => setNewCourse(prev => ({ ...prev, credit: e.target.value }))}
+                                placeholder="3"
+                                className="px-2 py-1 text-[11px] text-center rounded-lg bg-(--surface) border
+                                           border-(--border) text-(--text-1) focus:outline-none
+                                           focus:border-(--text-2) transition-colors"
+                              />
+
+                              {/* 성적 */}
+                              <select
+                                value={newCourse.grade}
+                                onChange={e => setNewCourse(prev => ({ ...prev, grade: e.target.value }))}
+                                className="px-2 py-1 text-[11px] rounded-lg bg-(--surface) border
+                                           border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
+                                <option value="">-</option>
+                                {GRADES.map(g => <option key={g}>{g}</option>)}
+                              </select>
+                              <button
+                                onClick={() => {
+                                  setAddCourseFor(null);
+                                  setNewCourse({ name: '', category: '전공필수', credit: '3', grade: '' });
+                                }}
+                                className="text-(--text-3) hover:text-red-400 transition-colors text-[16px] leading-none">
+                                ×
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => addCourseToSemester(sem.id)}
+                              className="w-full py-1.5 rounded-lg text-[11px] font-semibold
+                                         bg-(--text-1) text-(--surface) hover:opacity-80 transition-opacity">
+                              + 추가
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              setAddCourseFor(sem.id);
+                              setNewCourse({ name: '', category: '전공필수', credit: '3', grade: '' });
+                            }}
+                            className="w-full py-1.5 rounded-lg border border-dashed border-(--border)
+                                       text-[11px] text-(--text-3) hover:border-(--text-2)
+                                       hover:text-(--text-2) transition-colors">
+                            + 과목 추가
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -789,7 +1004,9 @@ function Dashboard() {
                               flex justify-between items-center">
                 <span className="font-bold text-sm">목표 성적</span>
                 { /* 수정 버튼 @ */ }
-                <button className="text-[10px] font-medium text-(--text-2)
+                <button
+                  onClick={() => { setTargetInput(targetGpa.toFixed(2)); setEditTargetOpen(true); }}
+                  className="text-[10px] font-medium text-(--text-2)
                                   border border-(--border) rounded-lg
                                   px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
                   수정
@@ -800,18 +1017,18 @@ function Dashboard() {
                   <span className="text-[11px] text-(--text-3)">목표 GPA</span>
                   <span className="text-xl font-bold text-(--accent) tabular-nums"
                         style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif", letterSpacing: '-.02em' }}>
-                    4.2
+                    {targetGpa.toFixed(1)}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-[10px] text-(--text-2) mb-1">
                   <span>현재 <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
-                  <span>목표 <b className="text-(--accent) tabular-nums">4.2</b></span>
+                  <span>목표 <b className="text-(--accent) tabular-nums">{targetGpa.toFixed(1)}</b></span>
                 </div>
 
                 <div className="h-3 rounded-full bg-(--bar-track) overflow-hidden">
                   <div className="h-full rounded-full bg-(--bar)"
-                       style={{ width: `${Math.min(100, (avgGPA / 4.2) * 100).toFixed(0)}%` }} />
+                       style={{ width: `${Math.min(100, targetGpa > 0 ? (avgGPA / targetGpa) * 100 : 0).toFixed(0)}%` }} />
                 </div>
 
               </div>
@@ -819,117 +1036,58 @@ function Dashboard() {
 
               <div className="px-3.5 py-3">
                 <p className="text-[10px] text-(--text-3) mb-2">이번 학기 과목별 목표</p>
-                <div className="flex flex-col gap-1.5">
-                  {/* 목표 성적 블럭 - 이번 학기 과목별.. (임시, 하드코딩) */}
-                  {[
-                    { name: '자료구조', badge: 'A+', type: 'must' },
-                    { name: '알고리즘', badge: 'A0', type: 'must' },
-                    { name: '이산수학', badge: 'A0', type: 'rec' },
-                    { name: '영어회화', badge: 'B+', type: 'easy' },
-                    { name: '인성과윤리', badge: 'B+', type: 'easy' },
-                  ].map(row => (
-                    <div key={row.name} className="flex items-center justify-between">
-                      <span className={`text-[11px] font-medium ${row.type === 'must'
-                                        ? 'text-(--text-1)' : 'text-(--text-2)'}`}>
-                        {row.name}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <span className={`px-1.5 py-px rounded-full
-                                          text-[9px] font-semibold
-                            ${row.type === 'must'
-                            ? 'bg-(--warn-bg) text-(--warn-text)'
-                            : row.type === 'rec'
-                              ? 'bg-(--badge-neutral-bg) text-(--badge-neutral-text)'
-                              : 'bg-(--surface-2) text-(--text-2) border border-(--border)'
-                          }`}>
-                          {row.badge}
-                        </span>
-                        <span className={`text-[9px] font-semibold
-                          ${row.type === 'must' ? 'text-(--warn-text)'
-                            : row.type === 'rec' ? 'text-(--text-3)' : 'text-(--text-3)'}`}>
-                          {row.type === 'must' ? '필수' : row.type === 'rec' ? '권장' : '여유'}
-                          {/* type 의 경우 user가 직접 수정 가능하게 변경하는 등 수정이 필요함 !! */}
-                          {/* type: (임시, 하드코딩) */}
-                        </span>
+
+                {/* 목표 성적 블럭 @ - 현재학기 과목 기반 동적 입력 (하드코딩 제거) */}
+                {currentCourses.length > 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    {currentCourses.map((c: any) => (
+                      <div key={c.id} className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-(--text-1) truncate mr-2">{c.name}</span>
+                        <select
+                          value={targetGrades[c.id] ?? ''}
+                          onChange={e => setTargetGrades(prev => ({ ...prev, [c.id]: e.target.value }))}
+                          className="text-[11px] bg-(--surface) border border-(--border)
+                                     rounded px-1.5 py-0.5 shrink-0
+                                     text-(--text-1) cursor-pointer focus:outline-none">
+                          <option value="">목표 미설정</option>
+                          {GRADES.map(g => <option key={g}>{g}</option>)}
+                        </select>
+                        {/* type : user가 직접 수정 가능하게 변경 — select로 대체 완료 */}
                       </div>
-                    </div>
-                  ))}
-                </div>
-                {/* 목표 성적 - alert (임시, 하드코딩) */}
-                <div className="mt-2.5 px-2.5 py-1.5 bg-(--accent-bg) rounded-lg flex items-center gap-1.5">
-                  <CheckCircle2 size={12} className="text-(--accent) shrink-0" />
-                  <span className="text-[10px] text-(--text-2)">
-                    핵심 <b className="text-(--text-1)">2과목</b>
-                    &nbsp; A이상 &nbsp;→ &nbsp;<b className="text-(--accent)">4.2 달성 가능</b>
-                  </span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* 커뮤니티 미리보기 블럭 */}
-            <div className="bg-(--surface) rounded-xl border border-(--border)
-                            overflow-hidden flex flex-col flex-1"
-                style={{ boxShadow: 'var(--shadow-card)' }}>
-              <div className="px-3.5 py-3 border-b border-(--border)
-                              flex justify-between items-center shrink-0">
-                <span className="font-bold text-sm">커뮤니티</span>
-
-                { /* 더보기 버튼 @ */ }
-                <button className="text-[10px] font-medium text-(--text-2)
-                                  border border-(--border) rounded-lg
-                                  px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
-                  더보기
-                </button>
-              </div>
-
-              {/* 확인 - API 데이터와 연결 */}
-              <div className="flex flex-col flex-1">
-                {posts.slice(0, 4).map((post: any, i) => (
-                  <div key={post.id}
-                      className={`flex items-center justify-between px-3.5
-                                  py-2.5 cursor-pointer
-                                  hover:bg-(--surface-2) transition-colors
-                                  ${i < 3 ? 'border-b border-(--border)' : ''}`}>
-                                    {/* db key : id 로 div 구분해주고
-                                        3개만 아래선 적용해서 layout 심플하게 구성 */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="px-1.5 py-px rounded-full text-[9px]
-                                        font-semibold shrink-0
-                                        bg-(--badge-neutral-bg)
-                                        text-(--badge-neutral-text)">
-                          {POST_TAG[post.category] ?? post.category}
-
-                          {/* const POST_TAG: Record<string, string> = {
-                            GRADUATION: '졸업', JOB_HUNT: '취준',
-                            DAILY: '자유', NOTICE: '공지',}; */}
-                        </span>
-
-                        <span className="text-[11px] font-medium text-(--text-1) truncate">
-                          {post.title}
-                        </span>
-                      </div>
-
-                      <p className="text-[10px] text-(--text-3)">
-                        {post.author_username} · {timeAgo(post.create_date)}
-                      </p>
-
-                    </div>
-                    <span className="text-[10px] text-(--text-3) shrink-0 ml-2">
-                      ♥ {post.like_count}
-                    </span>
+                    ))}
                   </div>
-                ))}
-                {posts.length === 0 && (
-                  <div className="flex-1 flex items-center justify-center
-                                  text-[11px] text-(--text-3)">
-                    게시글이 없습니다
-                  </div>
+                ) 
+                : (
+                  <p className="text-[11px] text-(--text-3) text-center py-2">수강 과목 없음</p>
                 )}
+                
+                {/* 목표 성적 - 예상 결과 alert (목표 성적 설정 시 동적 계산) */}
+                {(() => {
+                  const filled = currentCourses.filter((c: any) => targetGrades[c.id]);
+                  if (filled.length === 0) return null;
+                  let pts = 0, cr = 0;
+                  for (const c of filled as any[]) {
+                    pts += GRADE_SCALE[targetGrades[c.id]] * c.credit;
+                    cr  += c.credit;
+                  }
+                  const predicted = pts / cr;
+                  return (
+                    <div className="mt-2.5 px-2.5 py-1.5 bg-(--accent-bg) rounded-lg flex items-center gap-1.5">
+                      <CheckCircle2 size={12} className="text-(--accent) shrink-0" />
+                      <span className="text-[10px] text-(--text-2)">
+                        목표대로 받으면 이번학기&nbsp;
+                        <b className="text-(--accent)">{predicted.toFixed(2)}</b>
+                        &nbsp;{predicted >= targetGpa ? '→ 목표 달성 ✓' : '→ 목표 미달'}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
+
+            {/* 커뮤니티(게시판) 미리보기 블럭 — CommunityPreview.tsx */}
+            <CommunityPreview onGoToBoard={onGoToBoard} />
           </div>
 
           {/* #3열 : 이번 학기 수강 | 시간표 */}
@@ -1000,7 +1158,9 @@ function Dashboard() {
                 <span className="font-bold text-[13px]">시간표</span>
 
                 { /* 전체보기 버튼 @ */ }
-                <button className="text-[10px] font-medium text-(--text-2)
+                <button
+                  onClick={onGoTimetable}
+                  className="text-[10px] font-medium text-(--text-2)
                                   border border-(--border) rounded-lg
                                   px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
                   전체보기
@@ -1133,7 +1293,7 @@ function Dashboard() {
                 <span className="text-[12px] font-bold">교양학점</span>
                 <span className="text-lg font-bold tabular-nums text-(--text-1)"
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-                      &nbsp; 40
+                      &nbsp; {liberalEarned}
                 </span>
                 <span className="text-[10px] text-(--text-3)">/ 42 학점</span>
               </div>
@@ -1197,20 +1357,37 @@ function Dashboard() {
       />
 
       <div className="px-4.5 py-4 flex flex-col gap-4">
-        {/* 학기 입력 */}
+        {/* 학기 입력 — 연도 숫자 입력 + 학기 구분 select */}
         <div>
           <p className="block text-[11px] font-semibold text-(--text-2) mb-1.5">
-            학기 <span className="font-normal text-(--text-3)">(예: 1-1, 1-2)</span>
+            학기 <span className="font-normal text-(--text-3)">(예: 2025년 1학기)</span>
           </p>
 
-          <input
-            value={newSemName}
-            onChange={e => setNewSemName(e.target.value)}
-            placeholder="3-2"
-            className="w-28 px-3 py-1.5 text-[13px] rounded-lg
-                       bg-(--surface) border border-(--border) text-(--text-1)
-                       focus:outline-none focus:border-(--text-2) transition-colors"
-          />
+          <div className="flex gap-2 items-center">
+            <input
+              type="number"
+              value={newSemYear}
+              onChange={e => setNewSemYear(e.target.value)}
+              placeholder="2025"
+              min={2000}
+              max={2050}
+              className="w-24 px-3 py-1.5 text-[13px] rounded-lg
+                         bg-(--surface) border border-(--border) text-(--text-1)
+                         focus:outline-none focus:border-(--text-2) transition-colors"
+            />
+            <span className="text-[12px] text-(--text-3)">년</span>
+            <select
+              value={newSemTerm}
+              onChange={e => setNewSemTerm(e.target.value as '1'|'2'|'summer'|'winter')}
+              className="px-3 py-1.5 text-[13px] rounded-lg bg-(--surface) border
+                         border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
+              <option value="1">1학기</option>
+              <option value="2">2학기</option>
+              <option value="summer">하계</option>
+              <option value="winter">동계</option>
+            </select>
+          </div>
+
         </div>
 
         <div>
@@ -1222,7 +1399,7 @@ function Dashboard() {
             {/* 과목 추가 버튼 */}
             <button
               onClick={() => setNewSemCourses([...newSemCourses, {
-                name: '', category: '전공필수', credit: '3' }
+                name: '', category: '전공필수', credit: '3', grade: '' }
               ])}
               className="flex items-center gap-1 text-[10px] font-medium text-(--text-2)
                          border border-(--border) rounded-lg px-2 py-0.5
@@ -1232,15 +1409,15 @@ function Dashboard() {
           </div>
 
           <div className="grid text-[10px] text-(--text-3) px-0.5 mb-1"
-               style={{ gridTemplateColumns: '1fr 100px 54px 22px', gap: '0 5px' }}>
-            <span>과목명</span><span>구분</span><span className="text-center">학점</span><span/>
+               style={{ gridTemplateColumns: '1fr 96px 48px 60px 22px', gap: '0 5px' }}>
+            <span>과목명</span><span>구분</span><span className="text-center">학점</span><span className="text-center">성적</span><span/>
           </div>
 
           {/* 인풋 필드 @ */}
           <div className="flex flex-col gap-1.5">
             {newSemCourses.map((c, i) => (
               <div key={i} className="grid gap-1.5 items-center"
-                   style={{ gridTemplateColumns: '1fr 100px 54px 22px' }}>
+                   style={{ gridTemplateColumns: '1fr 96px 48px 60px 22px' }}>
 
                 {/* 과목명 */}
                 <input
@@ -1278,6 +1455,18 @@ function Dashboard() {
                              focus:border-(--text-2) transition-colors"
                 />
 
+                {/* 성적 */}
+                <select
+                  value={c.grade}
+                  onChange={e => setNewSemCourses(newSemCourses.map((x, j) => j === i
+                    ? { ...x, grade: e.target.value }
+                    : x ))}
+                  className="px-2 py-1 text-[11px] rounded-lg bg-(--surface) border
+                             border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
+                  <option value="">-</option>
+                  {GRADES.map(g => <option key={g}>{g}</option>)}
+                </select>
+
                 {/* 삭제 버튼 */}
                 <button
                   onClick={() => setNewSemCourses(newSemCourses.filter((_, j) => j !== i))}
@@ -1309,7 +1498,47 @@ function Dashboard() {
         </button>
 
         <button
-          onClick={() => { setAddSemOpen(false); setNewSemName(''); setNewSemCourses([]); }}
+          onClick={saveSemester}
+          className="px-4 py-1.5 rounded-lg text-[12px] font-semibold
+                     bg-(--text-1) text-(--surface)
+                     hover:opacity-85 transition-opacity">
+          저장
+        </button>
+      </PopupFooter>
+    </Popup>
+
+    {/* == 목표 GPA 수정 팝업 == */}
+    <Popup open={editTargetOpen} onClose={() => setEditTargetOpen(false)} width="320px">
+      <PopupHeader title="목표 GPA 수정" onClose={() => setEditTargetOpen(false)} />
+
+      <div className="px-4.5 py-4">
+        <label className="block text-[11px] font-semibold text-(--text-2) mb-1.5">
+          목표 GPA
+        </label>
+        <input
+          type="number"
+          min={0}
+          max={4.5}
+          step={0.01}
+          value={targetInput}
+          onChange={e => setTargetInput(e.target.value)}
+          className="w-full px-3 py-2 text-[13px] rounded-lg
+                     bg-(--surface) border border-(--border) text-(--text-1)
+                     focus:outline-none focus:border-(--text-2) transition-colors"
+        />
+        <p className="text-[10px] text-(--text-3) mt-1">
+          0.00 ~ 4.50 범위 내로 입력해주세요.</p>
+      </div>
+
+      <PopupFooter>
+        <button onClick={() => setEditTargetOpen(false)}
+                className="px-4 py-1.5 rounded-lg text-[12px]
+                           border border-(--border)
+                           text-(--text-2) hover:bg-(--surface-2) transition-colors">
+          취소
+        </button>
+        <button
+          onClick={saveTargetGpa}
           className="px-4 py-1.5 rounded-lg text-[12px] font-semibold
                      bg-(--text-1) text-(--surface)
                      hover:opacity-85 transition-opacity">

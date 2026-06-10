@@ -5,7 +5,7 @@ import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 
 // 엑셀 업로드 팝업
 // 성적 데이터가 없을 때 강제로 띄움 (닫기 버튼 없음)
-// 업로드 성공 시 onSuccess() 호출 → 부모에서 데이터 리로드
+// 업로드 성공 시 onSuccess() 호출 => 부모로 전달 (Props) : 상위에서 리로딩함.
 
 interface Props {
   open: boolean;
@@ -14,14 +14,14 @@ interface Props {
 
 function ExcelUploadPopup({ open, onSuccess }: Props) {
 
-  const [file, setFile]         = useState<File | null>(null);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
 
   function handleFile(f: File) {
-    setFile(f);
+    setFile(f); // 파일 업로드
     setError('');
   }
 
@@ -35,6 +35,7 @@ function ExcelUploadPopup({ open, onSuccess }: Props) {
       const fd = new FormData();
       fd.append('file', file);
 
+      // back api : api/grade/parse (성적 업로드 : API명세서)
       const res = await fetch('http://localhost:3000/api/grade/parse', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
@@ -44,22 +45,25 @@ function ExcelUploadPopup({ open, onSuccess }: Props) {
       const data = await res.json();
 
       if (!data.ok) {
-        setError(data.error || '파싱에 실패했습니다.');
+        setError(data.error || data.message || '파싱에 실패했습니다.');
         return;
       }
 
-      // 업로드 완료 → 파일 초기화 + 부모에 알림
+      // 업로드 완료 후에는 파일 초기화하고 부모로전달
       setFile(null);
       onSuccess();
 
-    } catch {
+    } 
+    catch {
       setError('업로드 중 오류가 발생했습니다.');
-    } finally {
+    } 
+    finally {
       setLoading(false);
     }
   }
 
 
+  // X 버튼 없고, onClose 인자는 관리함수 받아오지 않게 (못 닫음)
   return (
     <Popup open={open} onClose={() => {}} width="440px">
       <PopupHeader
@@ -68,12 +72,13 @@ function ExcelUploadPopup({ open, onSuccess }: Props) {
 
       <div className="px-5 py-5 flex flex-col gap-4">
         <p className="text-[12px] text-(--text-2) leading-relaxed">
-          학교 포털에서 <b className="text-(--text-1)">성적 확인 → 성적표 저장</b>으로
-          다운받은 <b className="text-(--text-1)">.xlsx 파일</b>을 업로드하면
+          개신누리 홈페이지에서 <br/>
+          <b className="text-(--text-1)"> 학생서비스메뉴 - 교직/졸업 - 졸업학점이수현황(학) - 출력(엑셀 선택)</b>
+          &nbsp; 으로 <br/> 다운받은 <b className="text-(--text-1)">.xlsx 파일</b>을 업로드하면
           자동으로 학기/과목 데이터를 불러옵니다.
         </p>
 
-        {/* 드래그 앤 드롭 영역 */}
+        {/* 드래그 앤 드롭 영역 (수강신청 탭 ref.) */}
         <div
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
