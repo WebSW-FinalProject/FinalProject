@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import type { Section, Page } from '../../hooks/useNavigation';
 
 import Dashboard from '../pages/grades/Dashboard';
@@ -12,20 +13,25 @@ import Courses  from '../pages/Courses';
 interface MainProps {
   section: Section;
   page: Page;
+  goTo: (section: Section, page?: Page) => void;
 }
 
-function Main({ section, page }: MainProps) {
-
-  // 하위 탭 분리 로직 (page)
+function Main({ section, page, goTo }: MainProps) {
+  // 커뮤니티 미리보기 게시글 클릭 시 board로 이동하면서 해당 글 팝업 열기
+  const [boardOpenPostId, setBoardOpenPostId] = useState<number | null>(null);
 
   if (section === 'grades') {
-    if (page === 'dashboard') return <Dashboard />;
+    if (page === 'dashboard')
+      return <Dashboard
+        onGoTimetable={() => goTo('grades', 'timetable')}
+        onGoToBoard={(postId) => { setBoardOpenPostId(postId ?? null); goTo('board'); }}
+      />;
     if (page === 'credits')   return <Credits />;
     if (page === 'timetable') return <Timetable />;
     if (page === 'ai')        return <AiAnalysis />;
   }
 
-  if (section === 'board')   return <Board />;
+  if (section === 'board')   return <Board initialPostId={boardOpenPostId} />;
   if (section === 'courses') return <Courses />;
 
 

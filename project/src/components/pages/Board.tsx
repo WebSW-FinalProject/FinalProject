@@ -78,7 +78,7 @@ async function apiFetch(url: string, options: RequestInit = {}) {
 
 
 // 컴포넌트
-function Board() {
+function Board({ initialPostId }: { initialPostId?: number | null }) {
   // 피드 상태
   const [posts, setPosts]           = useState<Post[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -174,6 +174,9 @@ function Board() {
       console.error(e);
     }
   }
+
+  // 커뮤니티 미리보기에서 게시글 클릭 시 해당 글 팝업 바로 열기
+  useEffect(() => { if (initialPostId) openPost(initialPostId); }, [initialPostId]);
 
   function closePost() {
     setSelectedPost(null);
