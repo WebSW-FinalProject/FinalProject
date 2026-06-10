@@ -1,4 +1,4 @@
-const router = require('express').Router();
+﻿const router = require('express').Router();
 const pool = require('../db/connection');
 const authMiddleware = require('../../authMiddleware');
 
@@ -16,6 +16,25 @@ router.delete('/', authMiddleware, async (req, res) => {
             message : error
         })
     }
+});
+
+
+// PUT /api/users/target-gpa (사용자 목표학점 추가 API)
+// dashboard.tsx - 목표 성적 블럭에서의 수정 버튼이 trigger(saveTargetGpa())
+router.put('/target-gpa', authMiddleware, async (req, res) => {
+  const { target_gpa } = req.body;
+  const val = parseFloat(target_gpa);
+
+  if (isNaN(val) ||
+       val < 0 || val > 4.5) {
+    return res.status(400).json({ message: '범위 외 입력 (0.00 ~ 4.50)' });
+  }
+
+  await pool.query(
+    'UPDATE users SET target_gpa = ? WHERE id = ?', 
+    [val, req.user.id]); // target.gpa 설정
+    
+   res.status(204).send(); 
 });
 
 module.exports = router;

@@ -6,11 +6,13 @@ USE UniguideDB;
 
 -- users
 -- id, email, pw(hash), username, enroll_date(가입일)
+-- dash 연결 : target_gpa 추가 : 목표 학점(유저 직접 설정) DB연결 
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   email         VARCHAR(255)  NOT NULL,
   password_hash VARCHAR(255)  NOT NULL,
   username      VARCHAR(80)   NOT NULL,
+  target_gpa    DECIMAL(3,2)  NOT NULL DEFAULT 4.20,
   enroll_date   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_email (email)
@@ -37,7 +39,6 @@ CREATE TABLE IF NOT EXISTS semesters (
 -- division(교양/전공), area(개신기초교양...)
 -- sub_area(의사소통...), category(교양선택/전공필수...)
 -- FK: semester_id => semesters(id), CASCADE
-
 CREATE TABLE IF NOT EXISTS courses (
   id                   INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   semester_id          INT UNSIGNED  NOT NULL,

@@ -50,6 +50,34 @@ router.post('/', async (req, res) => {
   }
 });
 
+
+// 학기 GPA 업데이트 ("Dashboard.tsx - 학기 완료 버튼" 누르면 호출) 
+router.patch('/:semester_id', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { semester_id } = req.params;
+    const { gpa } = req.body;
+    const val = parseFloat(gpa); // 문자열을 숫자(float) 변환
+    
+    if (isNaN(val)) return res.status(400).json(
+      { message: 'GPA 값 오류' }
+    ); // 숫자꼴이 아닌 이상한 문자열 방지.. (isNaN : 변환실패)
+
+    await db.query(
+      'UPDATE semesters SET gpa = ? WHERE id = ? AND user_id = ?',
+      [val, semester_id, userId]
+    ); // db UPDATE 를 통해 gpa 입력된 NOT 현재학기로 patch
+       // 특정 유저 user_id 의 id 학기 update(patch)
+
+    res.status(204).send();
+  } 
+  catch (err) {
+    res.status(500).json(
+      { message: '학기 업데이트 실패', error: err.message });
+  }
+});
+
+
 // 학기 삭제
 router.delete('/:semester_id', async (req, res) => {
   try {

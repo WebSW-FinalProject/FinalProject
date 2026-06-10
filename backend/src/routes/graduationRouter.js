@@ -2,7 +2,23 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
 
-// 졸업 요건 기준학점 조회
+// 졸업 요건 조회 (기준학점 목록) - dashboard 통합용 
+//  area, required 만 받아서 dash 졸업요건 % 계산
+// GET /api/graduation
+router.get('/', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [rows] = await db.query(
+      'SELECT area, required FROM graduation_requirements WHERE user_id = ?',
+      [userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: '졸업 요건 조회 실패', error: err.message });
+  }
+});
+
+// 졸업 요건 기준학점 전체 조회
 // GET /api/graduation/requirements
 router.get('/requirements', async (req, res) => {
   try {
@@ -17,7 +33,7 @@ router.get('/requirements', async (req, res) => {
   }
 });
 
-// 졸업 미이수 내역 조회
+// 졸업 미이수 내역 조회 (엑셀 파싱 결과 — graduation_status 테이블)
 // GET /api/graduation/status
 router.get('/status', async (req, res) => {
   try {
@@ -32,6 +48,28 @@ router.get('/status', async (req, res) => {
   }
 });
 
+// 졸업 기준 설정 (유저 직접 수정)
+// POST /api/graduation/requirements
+// body: { area: string, required: number }
+router.post('/requirements', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { area, required } = req.body;
+    if (!area || required == null) {
+      return res.status(400).json({ message: 'area, required 필수' });
+    }
+    await db.query(
+      `INSERT INTO graduation_requirements (user_id, area, required)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE required = VALUES(required)`,
+      [userId, area, required]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: '졸업 기준 설정 실패', error: err.message });
+  }
+});
+
 // 졸업 미이수 내역 저장 (엑셀 파싱 결과 — 기존 데이터 삭제 후 재삽입)
 // POST /api/graduation/status
 router.post('/status', async (req, res) => {
@@ -40,7 +78,7 @@ router.post('/status', async (req, res) => {
     const userId = req.user.id;
     const { items } = req.body;
 
-    if (!Array.isArray(items) || items.length === 0) {
+    if (!Array.isArray(items)) {
       return res.status(400).json({ message: 'items 배열은 필수입니다.' });
     }
 
