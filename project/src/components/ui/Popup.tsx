@@ -13,7 +13,7 @@ interface PopupProps {
 // PopupHeader , Popup , PopupFooter 
 // 팝업이름 / 내용 / 버튼 형식으로 구분
 // 사용 예시 :   <Popup open="" onClose="" width="" />
-//               <PopupHeader title="" onClose=""/>
+//               <PopupHeader title="" onClose=""/> // onclose 비어있을수있음(엑셀업로드)
 //               <PopupFooter />
 
 function Popup({ open, onClose, children, width = '400px' }: PopupProps) {
@@ -36,13 +36,14 @@ function Popup({ open, onClose, children, width = '400px' }: PopupProps) {
 
 // 팝업 헤더 (이름 + 닫기버튼)
 export function PopupHeader(
-  { title, onClose }: { title: React.ReactNode; onClose?: () => void }
+  { title, onClose }: { title: React.ReactNode; onClose?: () => void } 
+  // 엑셀 업로드 팝업은 X 없이(onClose?: x버튼 없는것 허용) 구현해야 함.
 ) {
   return (
-    <div className="px-4.5 py-3.5 border-b border-(--border)
-                    flex items-center justify-between
+    <div className="px-4.5 py-3.5 border-b border-(--border) 
+                    flex items-center justify-between 
                     sticky top-0 bg-(--surface) z-10">
-      <p className="text-[14px] font-bold text-(--text-1)
+      <p className="text-[14px] font-bold text-(--text-1) 
                     flex items-center gap-1.5"> {title} </p>
       {onClose && (
         <button onClick={onClose}
@@ -50,7 +51,7 @@ export function PopupHeader(
                 hover:text-(--text-1) hover:bg-(--surface-2) transition-colors">
           ×
         </button>
-      )}
+      )} {/* onClose 인자가 존재할 때만(close state O) 닫기버튼표시함. */}
     </div>
   );
 }

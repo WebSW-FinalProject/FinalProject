@@ -1,4 +1,4 @@
-
+﻿
 import Header from './components/layout/Header';
 import Sidebar from './components/layout/Sidebar';
 import PageNav from './components/layout/PageNav';
@@ -53,7 +53,7 @@ function App() {
         <Sidebar section={section} page={page} goTo={goTo} setPage={setPage} />
         <div className="flex flex-col flex-1 min-w-0">
           {section === 'grades' && <PageNav page={page} setPage={setPage} />}
-          <Main section={section} page={page} />
+          <Main section={section} page={page} goTo={goTo} />
         </div>
       </div>
 

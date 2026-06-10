@@ -2,7 +2,7 @@
 import Logo from '../logo.tsx';
 import { useState } from 'react';
 import type { Section } from '../../hooks/useNavigation';
-import { Moon, Sun, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Moon, Sun, Settings, HelpCircle, LogOut, Trash2 } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../ui/Popup';
 
 interface HeaderProps {
@@ -143,6 +143,20 @@ function Header({ section, goTo, isDark, setDark, onLogout }: HeaderProps) {
                                     text-(--alert-warn) hover:bg-(--alert-warn-bg)/40 transition-colors">
                     <LogOut size={13}/> 로그아웃
                   </button> {/* 로그아웃 연결 */}
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('정말 탈퇴하겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
+                      const token = localStorage.getItem('token') || '';
+                      await fetch('http://localhost:3000/api/users', {
+                        method: 'DELETE',
+                        headers: { Authorization: 'Bearer ' + token },
+                      });
+                      onLogout?.();
+                    }}
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px]
+                               text-red-400 hover:bg-red-500/10 transition-colors">
+                    <Trash2 size={13}/> 회원 탈퇴
+                  </button>
                 </div>
               )}
             </div>
