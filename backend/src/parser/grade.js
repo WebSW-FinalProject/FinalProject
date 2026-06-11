@@ -38,17 +38,29 @@ module.exports = async function parseGradeReport(filePath) {
   await wb.xlsx.load(buffer);
   const ws = wb.worksheets[0];
 
-  // 학번, 이름
-  let studentId = null, name = null;
+
+  // 학번, 이름, 학과, 학년
+  // 전각괄호（）vs 반각()、공백 차이 대응을 위해 정규화 후 비교 (파싱 오류: AI 도움)
+  const norm = s => s.replace(/[（(]/g, '(').replace(/[）)]/g, ')').replace(/\s/g, '');
+
+  let studentId = null, name = null, department = null, gradeYear = null;
   for (let rn = 1; rn <= ws.rowCount; rn++) {
     const row = uniqRow(ws, rn);
     for (let i = 0; i < row.length - 1; i++) {
       const [, v] = row[i];
       const [, next] = row[i + 1];
-      if (v === '학번' && !studentId) studentId = next;
-      if (v === '성명' && !name) name = next;
+
+      // 학과 및 학년 추가 (프로필 정보란 연결, AI 도움 받음.)
+      const nv = norm(v);
+      if (nv === '학번'           && !studentId)  studentId  = next;
+      if (nv === '성명'           && !name)       name       = next;
+      if ((nv === '학과(전공)' || nv === '학과') && !department) department = next;
+      if (nv === '학년'           && !gradeYear) {
+        const m = next.match(/(\d+)/);
+        gradeYear = m ? parseInt(m[1]) : null; // "3학년" => 3
+      }
     }
-    if (studentId && name) break;
+    if (studentId && name && department && gradeYear) break;
   }
 
   // 평점평균
@@ -207,5 +219,7 @@ for (let rn = 1; rn <= ws.rowCount; rn++) {
   }
 }
 
-return { studentId, name, gpa, graduationRequired, totalEarned, majorRequired, liberalRequired, courses, enrolledCourses };
+return { studentId, name, department, gradeYear, gpa, 
+         graduationRequired, totalEarned, majorRequired, 
+         liberalRequired, courses, enrolledCourses };
 };

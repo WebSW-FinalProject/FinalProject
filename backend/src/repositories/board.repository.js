@@ -279,9 +279,26 @@ async function findCommentsByUser(userId) {
   return rows;
 }
 
+// 내가 댓글 단 글 목록 블럭으로 변경: 추가 (중복 제거)
+async function findPostsCommentedByUser(userId) {
+  const [rows] = await db.query(
+    `SELECT p.id, p.title, p.category, p.view_count,
+            p.enroll_date AS create_date,
+            p.user_id AS author_id, u.username AS author_username,
+            (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS like_count
+     FROM posts p
+     JOIN users u ON p.user_id = u.id
+     WHERE p.id IN (SELECT DISTINCT post_id FROM comments WHERE user_id = ?)
+     ORDER BY p.enroll_date DESC`,
+    [userId]
+  );
+  return rows;
+}
+
 module.exports = {
   findPosts, findPostById, insertPost, updatePost, deletePost, incrementViewCount,
   toggleLike, toggleBookmark,
   findCommentsByPostId, findCommentById, insertComment, deleteComment,
-  findPostsByAuthor, findPostsLikedByUser, findPostsBookmarkedByUser, findCommentsByUser,
+  findPostsByAuthor, findPostsLikedByUser, findPostsBookmarkedByUser,
+  findCommentsByUser, findPostsCommentedByUser,
 };

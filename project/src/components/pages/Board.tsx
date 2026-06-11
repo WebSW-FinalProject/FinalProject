@@ -56,7 +56,8 @@ function getCat(category: string) {
   return CATEGORIES.DAILY;
 }
 
-const BASE = '/api/board';
+const BASE = 'http://localhost:3000/api/board';
+//  로컬host로 해둬야 서버 켰을 때 제대로 호출됨 (하드코딩, 배포CK)
 
 function authHeader(): Record<string, string> {
   const token = localStorage.getItem('token');
@@ -112,7 +113,9 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
 
   // Quick Access 팝업
   const [popupTab, setPopupTab]   = useState('');
-  const [myData, setMyData]       = useState<{ written: Post[]; liked: Post[]; bookmarked: Post[]; comments: Comment[] } | null>(null);
+  const [myData, setMyData]       = useState<{
+     written: Post[]; liked: Post[]; bookmarked: Post[]; commented: Post[] 
+    } | null>(null);
 
   // 피드 불러오기
   const fetchFeed = useCallback(async (p = 0) => {
@@ -247,13 +250,13 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
   // Quick Access 데이터 
   async function openPopup(tab: string) {
     setPopupTab(tab);
-    if (!myData) {
-      try {
-        const data = await apiFetch(`${BASE}/me/data`);
-        setMyData(data);
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      // 항상 재조회 => 좋아요 등 변경 시 새로고침없이 바로 반영됨!
+      const data = await apiFetch(`${BASE}/me/data`);
+      setMyData(data);
+    }
+    catch (e) {
+      console.error(e);
     }
   }
 
@@ -262,6 +265,8 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
     if (popupTab === 'mine')      return myData.written;
     if (popupTab === 'liked')     return myData.liked;
     if (popupTab === 'saved')     return myData.bookmarked;
+    if (popupTab === 'commented') return myData.commented;
+    // 댓글단 글도 단순 데이터가 아니라 블럭으로 display 해야함.
     return [];
   }
 
@@ -561,21 +566,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
           onClose={() => setPopupTab('')}
         />
         <div className="max-h-[60vh] overflow-y-auto popup-scroll min-h-70">
-          {popupTab === 'commented' ? (
-            // 댓글 탭: 댓글 목록 표시
-            !myData ? (
-              <p className="py-8 text-center text-[12px] text-(--text-3)">불러오는 중...</p>
-            ) : myData.comments.length === 0 ? (
-              <p className="py-8 text-center text-[12px] text-(--text-3)">게시글이 없습니다.</p>
-            ) : (
-              myData.comments.map(c => (
-                <div key={c.id} className="flex items-start gap-3 px-5 py-4 border-b border-(--border)">
-                  <p className="text-[12px] text-(--text-2) flex-1">{c.content}</p>
-                  <span className="text-[10px] text-(--text-3) shrink-0">{dayjs(c.create_date).fromNow()}</span>
-                </div>
-              ))
-            )
-          ) : (
+          {(
             getPopupPosts().length === 0 ? (
               <p className="py-8 text-center text-[12px] text-(--text-3)">
                 {!myData ? '불러오는 중...' : '게시글이 없습니다.'}

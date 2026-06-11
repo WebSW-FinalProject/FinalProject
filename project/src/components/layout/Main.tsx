@@ -14,9 +14,14 @@ interface MainProps {
   section: Section;
   page: Page;
   goTo: (section: Section, page?: Page) => void;
+  reuploadOpen?: boolean;      // 엑셀 재업로드 (헤더)
+  onReuploadDone?: () => void; // 팝업 닫힘 => 초기화
 }
 
-function Main({ section, page, goTo }: MainProps) {
+// 
+function Main({ section, page, goTo,
+                reuploadOpen, onReuploadDone }: MainProps) {
+
   // 커뮤니티 미리보기 게시글 클릭 시 board로 이동하면서 해당 글 팝업 열기
   const [boardOpenPostId, setBoardOpenPostId] = useState<number | null>(null);
 
@@ -25,6 +30,8 @@ function Main({ section, page, goTo }: MainProps) {
       return <Dashboard
         onGoTimetable={() => goTo('grades', 'timetable')}
         onGoToBoard={(postId) => { setBoardOpenPostId(postId ?? null); goTo('board'); }}
+        reuploadOpen={reuploadOpen}
+        onReuploadDone={onReuploadDone}
       />;
     if (page === 'credits')   return <Credits />;
     if (page === 'timetable') return <Timetable />;

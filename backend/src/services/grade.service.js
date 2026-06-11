@@ -12,7 +12,7 @@ async function parseAndSave(filePath, userId) {
     if (raw === '2학기') return '2';
     if (raw === '하계' || raw === '여름') return 'summer';
     if (raw === '동계' || raw === '겨울') return 'winter';
-    return null; // 학점인정 등 매핑 불가 → 건너뜀
+    return null; // 학점인정 등 매핑 불가하면 건너뜀
   }
 
   // 완료 과목 + 수강신청내역(현학기)을 학기별로 묶음
@@ -78,6 +78,14 @@ async function parseAndSave(filePath, userId) {
          VALUES (?, ?, ?)
          ON DUPLICATE KEY UPDATE required = VALUES(required)`,
         [userId, area, required]
+      );
+    }
+
+    // 학과, 학년(프로필 정보) 존재하면 저장 (엑셀 업로드 시 갱신)
+    if (parsed.department || parsed.gradeYear) {
+      await conn.query(
+        `UPDATE users SET department=?, grade_year=? WHERE id=?`,
+        [parsed.department || null, parsed.gradeYear || null, userId]
       );
     }
 

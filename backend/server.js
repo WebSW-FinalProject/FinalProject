@@ -40,9 +40,10 @@ app.use('/api/auth', authRouter);
 const authMiddleware = require('./authMiddleware');
 app.get('/api/users/mypage', authMiddleware, async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT id, email, username, target_gpa, enroll_date FROM users WHERE id = ?',
+    `SELECT id, email, username, target_gpa, department,
+     grade_year, enroll_date FROM users WHERE id = ?`,
     [req.user.id]
-  );
+  ); // 미들웨어에 학과, 학년 정보 추가 (프로필 정보)
   res.json(rows[0]);
 });
 
@@ -67,6 +68,14 @@ app.use('/api/semesters/:semester_id/courses', authMiddleware, courseRouter);
 //  GET /todos, POST /requirements, POST /status)
 const graduationRouter = require('./src/routes/graduationRouter');
 app.use('/api/graduation', authMiddleware, graduationRouter);
+
+// 시간표 - 일정 추가 라우터
+const scheduleRouter = require('./src/routes/scheduleRouter');
+app.use('/api/schedule', authMiddleware, scheduleRouter);
+
+// 시간표 라우터
+const timetableRouter = require('./src/routes/timetableRouter');
+app.use('/api/timetable', authMiddleware, timetableRouter);
 
 app.use((err, req, res, next) => {
   const status  = err.status || 500;

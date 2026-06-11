@@ -1,7 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LayoutGrid, PlusCircle, Trash2 } from 'lucide-react';
-import { mockSemesters, mockCourses } from '../../../data/mock';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 
 const tabs = [
@@ -15,37 +14,99 @@ const TYPE_OPTS  = [
   { value:'c', label:'교양' },     { value:'g', label:'기타' },
 ]; // 시간표 - 수업 추가 팝업 - 구분 
 
-type Block = { id:number; col:number; row:string; name:string; time:string; type:string };
 
-// 초기 시간표 데이터 (임시, 하드코딩)
-const INIT_BLOCKS: Block[] = [
-  { id:1, col:2, row:'1/3', name:'자료구조',  time:'09:00~11:00', type:'b' },
-  { id:2, col:3, row:'3/5', name:'알고리즘',  time:'11:00~13:00', type:'p' },
-  { id:3, col:4, row:'1/3', name:'자료구조',  time:'09:00~11:00', type:'b' },
-  { id:4, col:4, row:'3/5', name:'알고리즘',  time:'11:00~13:00', type:'p' },
-  { id:5, col:2, row:'5/7', name:'영어회화',  time:'13:00~15:00', type:'c' },
-  { id:6, col:6, row:'5/7', name:'영어회화',  time:'13:00~15:00', type:'c' },
-  { id:7, col:5, row:'6/8', name:'인성과윤리', time:'14:00~16:00', type:'g' },
-];
+type Block   = { id:number; col:number; grid_row:string;
+                 name:string; time:string; type:string };
+                 // db 구조대로 가져옴. (sql schema 참조)
 
-let nextId = INIT_BLOCKS.length + 1;
+type DayTime = { col:number; startTime:string; endTime:string };
+               // 요일별 시간대 (수업 추가 팝업 - 요일 선택 시 생성)
 
-// 수강 과목 상세 (임시, 하드코딩 - Main Dash + 시간정보)
-const COURSE_DETAIL = [
-  { name:'자료구조',  days:'월·수', time:'09:00~11:00', credit:3, type:'b' },
-  { name:'알고리즘',  days:'화·목', time:'11:00~13:00', credit:3, type:'p' },
-  { name:'영어회화',  days:'월·금', time:'13:00~15:00', credit:2, type:'c' },
-  { name:'이산수학',  days:'수',    time:'12:00~14:00', credit:3, type:'p' },
-  { name:'인성과윤리', days:'목',   time:'14:00~16:00', credit:2, type:'g' },
-];
 
-// 다가오는 일정 (임시, 하드코딩)
-const SCHEDULE_LIST = [
-  { label: '자료구조 중간고사',  date: '5월 28일 (수) 09:00', dday: 3,  warn: true  },
-  { label: '알고리즘 과제 제출', date: '6월 1일 (일) 23:59',  dday: 7,  warn: false },
-  { label: '영어회화 발표',      date: '6월 8일 (일) 수업 중', dday: 14, warn: false },
-  { label: '기말고사 시작',      date: '6월 15일 (일) 수업 중', dday: 21, warn: false },
-];
+const COL_TO_DAY: Record<number, string> = {
+   2:'월', 3:'화', 4:'수', 5:'목', 6:'금'
+  }; // col 번호 => 요일 (1열은 시간 라벨이므로 2부터 시작)
+
+
+  
+// 과목 순서대로 색 배정 (추가된 순서 기준, 같은 과목명 = 같은 색)
+const COLOR_KEYS = ['b', 'p', 'c', 'g', 'v', 'i', 'l', 'n'];
+
+function buildColorMap(blocks: Block[]) {
+  const map: Record<string, string> = {};
+  let count = 0;
+
+  for (const b of blocks) {
+    if (!map[b.name]) {
+      map[b.name] = COLOR_KEYS[count % COLOR_KEYS.length];
+      count++;
+    }
+  }
+  
+  return map;
+}
+
+
+
+
+// 과목 목록 추출 (같은 이름 = 같은 과목으로 취급)
+function getCoursesFromBlocks(blocks: Block[]) {
+  const courses: any[] = [];
+
+  for (const b of blocks) {
+    const found = courses.find(c => c.name === b.name);
+    // 이미 추가된 과목인지 확인
+
+    if (!found) {
+      courses.push({
+        name: b.name, type: b.type,
+        cols:  [b.col],
+        times: [{ col: b.col, time: b.time }],
+      });
+    }
+    else if (!found.cols.includes(b.col)) { // 같은 과목 추가인 경우
+      found.cols.push(b.col);
+      found.times.push({ col: b.col, time: b.time }); 
+      // 요일정보 + 시간정보 push 
+    }
+  }
+
+  // cols/times 정렬 후 표시용 문자열 생성
+  for (const c of courses) {
+    c.cols.sort((a: number, z: number) => a - z);
+    c.times.sort((a: any, z: any) => a.col - z.col);
+
+    // ex) "월 10:00~12:00 · 수 10:00~12:00"
+    const timeLabels: string[] = [];
+    for (const t of c.times) {
+      timeLabels.push(`${COL_TO_DAY[t.col]} ${t.time}`);
+    }
+    c.timeStr = timeLabels.join(' · ');
+  }
+
+  return courses;
+}
+
+// D-day 계산 : 오늘 기준 남은 일수 (Date 활용 AI 도움)
+function calcDday(dateStr: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+// "년도(4)-달(2)-일(2)", "시간(2):분(2):초"
+// =>  "N월 M일 (요일) 시간(2):분(2)" 형식으로 변환
+function formatEventDate(dateStr: string, timeStr: string | null) {
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const d = new Date(dateStr + 'T00:00:00');
+  const base = `${d.getMonth()+1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`;
+  if (timeStr) return base + ' ' + timeStr.slice(0, 5); // "09:00:00" => "09:00"
+  return base;
+}
+
+
+
 
 function Timetable() {
 
@@ -62,42 +123,223 @@ function Timetable() {
   const [editBlock, setEditBlock] = useState<Block | null>(null);
   // 수업 추가 폼 상태 (요일col, 시작시간 row인덱스, 수업길이, 과목명, 타입)
 
-  // 시간표 블럭 관리
-  const [blocks, setBlocks] = useState<Block[]>(INIT_BLOCKS);
-  const [bForm, setBForm] = useState(
-    { name:'', col:2, startTime:'09:00', endTime:'11:00', type:'b' }
-  ); // 시간표 블럭 추가 초기형식
+  
+  // 시간표 블럭 (DB 연결)
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [bForm, setBForm] = useState({
+    name: '', type: 'b',
+    dayTimes: [{ col:2, startTime:'09:00', endTime:'11:00' }] as DayTime[],
+  }); // 시간표 블럭 추가폼 초기형식 (dayTimes: 요일별 강의시간 배열)
 
+  // 내 일정 목록 (DB 연결)
+  const [events, setEvents] = useState<any[]>([]); 
+  const dDayWarn = 3; // 3일 전부터 warning
+  const colorMap = buildColorMap(blocks); // 과목명 => 색 키 매핑 
 
-  function addBlock() { // 시간표 블럭 추가 로직
-    // 시작/종료 시간으로 교시로 변경, grid 배치!
-    const startRow = parseInt(bForm.startTime.split(':')[0]) - 8;
-    const endRow   = parseInt(bForm.endTime.split(':')[0])   - 8;
-      // 09:00 =(split)=> 09 =parseInt=> 9 => 1(교시)
+  // 수업 추가 - 요일별 시작~종료시간 관리
+  function updateDayTime(
+    col: number, field: 'startTime' | 'endTime', val: string) {
+    const next: DayTime[] = [];
 
-    // 일단 범위 외인 시간은 막아둠. 추가 예정.. (야간 시간)
-    if (endRow <= startRow || startRow < 1 || endRow > 8) return;
+    for (const d of bForm.dayTimes) {
+      if (d.col !== col) { next.push(d); } 
+      else if (field === 'startTime') {
+        next.push({ col: d.col, startTime: val, endTime: d.endTime });
+      } 
+      else {
+        next.push({ col: d.col, startTime: d.startTime, endTime: val });
+      }
+    }
 
-    setBlocks([...blocks, {
-      id: nextId++, col: bForm.col,
-      row: `${startRow}/${endRow}`,
-      name: bForm.name || '새 수업',
-      time: `${bForm.startTime}~${bForm.endTime}`,
-      type: bForm.type,
-    }]); // 누적 객체에 추가해주기
-
-    setAddOpen(false); // 팝업 자동 닫기
-    setBForm({ name:'', col:2, startTime:'09:00', endTime:'11:00', type:'b' });
+    setBForm(p => ({ ...p, dayTimes: next }));
   }
 
-  function deleteBlock(id: number) { // 시간표 블럭 삭제 로직
-    setBlocks(blocks.filter(b => b.id !== id));
-    setEditBlock(null);
-  }
 
-  // Dash Data 그대로 들고온것
-  const currentSem = mockSemesters.find(s => s.gpa === null)!;
-  const currentCourses = mockCourses.filter(c => c.semester_id === currentSem.id);
+
+
+  // #### 백엔드 연결 코드 - 시간표 블럭 DB 저장
+  //      ( back api 추가 (6.11 명세 갱신) )
+
+    // 시간표 블럭 불러오기 (GET /api/timetable)
+    async function loadBlocks() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch('http://localhost:3000/api/timetable', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) return; 
+        const data = await res.json();
+        setBlocks(data);
+      }
+      catch (e) { console.error('블럭 로드 실패:', e); }
+    }
+
+    // 시간표 블럭 추가 로직 (back 연결을 위해 async 추가)
+    async function addBlock() {
+      if (bForm.dayTimes.length === 0) return;
+         // 요일 미선택 : 동작 X
+
+      try {
+        const token = localStorage.getItem('token') || '';
+        const newBlocks: Block[] = [];
+        const overlapDays: string[] = []; // 겹친요일 넣음 (len: alert용)
+
+        // 선택한 요일마다 각각 DB에 저장 (요일별로 시간대 다름)
+        for (const dt of bForm.dayTimes) {
+          const startRow = parseInt(dt.startTime.split(':')[0]) - 8;
+          const endRow   = parseInt(dt.endTime.split(':')[0])   - 8;
+            // 09:00 =(split)=> 09 =parseInt=> 9 => 1(교시)
+            // 로직은 기존 mock 처리때와 동일함
+
+          // 범위 외 시간이면 처리 안하고 넘김 (처리가능한애만 처리)
+          if (endRow <= startRow || startRow < 1 || endRow > 8) continue;
+
+          // 겹치는 블럭 : 해당 요일 스킵 + 수집 (alert용)
+          let hasOverlap = false;
+          for (const b of blocks) {
+            if (b.col !== dt.col) continue;
+            
+            const parts  = b.grid_row.split('/');
+            const bStart = parseInt(parts[0]);
+            const bEnd   = parseInt(parts[1]);
+            if (startRow < bEnd && bStart < endRow) {
+              hasOverlap = true;
+              break;
+            }
+          }
+          if (hasOverlap) {
+            overlapDays.push(COL_TO_DAY[dt.col]);
+            continue;
+          }
+
+          const res = await fetch('http://localhost:3000/api/timetable', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token,
+                      'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              col:      dt.col,
+              grid_row: `${startRow}/${endRow}`,
+              name:     bForm.name || '새 수업',
+              time:     `${dt.startTime}~${dt.endTime}`,
+              type:     bForm.type,
+            }),
+          });
+          const data = await res.json();
+          if (!data.ok) continue;
+
+          // DB에서 발급된 id로 블럭 추가
+          newBlocks.push({
+            id: data.id, col: dt.col,
+            grid_row: `${startRow}/${endRow}`,
+            name: bForm.name || '새 수업',
+            time: `${dt.startTime}~${dt.endTime}`,
+            type: bForm.type,
+          });
+        }
+
+        setBlocks([...blocks, ...newBlocks]);
+
+        // 겹친 요일이 있으면 알림
+        if (overlapDays.length > 0) {
+          alert(`[${overlapDays.join(', ')}] 시간대가 기존 수업과 겹칩니다.
+                 \n기존 수업을 먼저 삭제한 후 다시 추가해 주세요.`);
+        }
+      }
+      catch (e) { console.error('블럭 저장 실패:', e); }
+
+      setAddOpen(false); // 팝업 자동 닫기
+      setBForm({ name:'', type:'b', 
+         dayTimes:[{ col:2, startTime:'09:00', endTime:'11:00' }] 
+      }); // 폼 초기화
+    }
+
+    // 시간표 블럭 삭제 로직 (back 연결을 위해 async 추가)
+    async function deleteBlock(id: number) {
+      try {
+        const token = localStorage.getItem('token') || '';
+        await fetch(`http://localhost:3000/api/timetable/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + token },
+        });
+
+        setBlocks(blocks.filter(b => b.id !== id));
+        setEditBlock(null);
+      }
+      catch (e) { console.error('블럭 삭제 실패:', e); }
+    }
+
+
+
+  // #### 백엔드 연결 코드 - 일정 DB저장
+  //      ( back api 추가 (6.10 명세 갱신) )
+
+    // 일정 불러오기 (GET /api/schedule)
+    async function loadEvents() {
+      try {
+        const token = localStorage.getItem('token') || '';
+      
+        const res = await fetch('http://localhost:3000/api/schedule', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await res.json();
+        // DB에서 event_date가 ISO 문자열로 오면 "YYYY-MM-DD"만 잘라냄
+        setEvents(data.map((ev: any) => ({
+          ...ev,
+          event_date: ev.event_date ? String(ev.event_date).slice(0, 10) : ev.event_date,
+        })));
+      } 
+      catch (e) {
+        console.error('일정 로드 실패:', e); 
+        }
+    }
+
+    // 일정 저장 (POST /api/schedule)
+    async function saveEvent() {
+      if (!evForm.title || !evForm.date) return;
+      try {
+        const token = localStorage.getItem('token') || '';
+        await fetch('http://localhost:3000/api/schedule', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token, 
+                    'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: evForm.title,
+            event_date: evForm.date,
+            event_time: evForm.time || null,
+            type: evForm.type,
+            memo: evForm.memo || null,
+          }),
+        });
+
+        setEvForm(
+          { title:'', date:'', time:'', type:'과제', memo:'' }
+        ); // 폼 초기화
+        loadEvents(); // 변경했으면 다시 불러오기 해서 display
+      } 
+      catch (e) { 
+        console.error('일정 저장 실패:', e);
+      }
+    }
+
+    // 일정 삭제 (DELETE /api/schedule/:id)
+    async function deleteEvent(id: number) {
+      try {
+        const token = localStorage.getItem('token') || '';
+        await fetch(`http://localhost:3000/api/schedule/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        loadEvents();
+      } 
+      catch (e) {
+        console.error('일정 삭제 실패:', e); 
+        }
+    }
+
+  useEffect(() => { loadBlocks(); loadEvents(); }, []); 
+  // 마운트 시 시간표+일정 불러오기
+
+
 
   return (
     <>
@@ -193,10 +435,10 @@ function Timetable() {
                                    hover:brightness-95 transition-all"
                         style={{
                           gridColumn: b.col,
-                          gridRow: b.row,
-                          background: `var(--timetable-${b.type}-bg)`,
-                          border: `1px solid var(--timetable-${b.type}-bd)`,
-                          color: `var(--timetable-${b.type}-text)`,
+                          gridRow: b.grid_row,
+                          background: `var(--timetable-${colorMap[b.name]}-bg)`,
+                          border: `1px solid var(--timetable-${colorMap[b.name]}-bd)`,
+                          color: `var(--timetable-${colorMap[b.name]}-text)`,
                         }}
                         onClick={e => { e.stopPropagation(); setEditBlock(b); }}>
                       <b>{b.name}</b><br/>
@@ -219,57 +461,65 @@ function Timetable() {
                 </div>
 
                 <div className="px-3 py-2 flex flex-col gap-1">
-                  {COURSE_DETAIL.map(c => (
+                  {getCoursesFromBlocks(blocks).map(c => (
                     <div key={c.name} className="flex items-center gap-2 py-0.5">
                       <span className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ background: `var(--timetable-${c.type}-bd)` }} />
+                            style={{ background: `var(--timetable-${colorMap[c.name]}-bd)` }} />
                       <div className="min-w-0 flex items-baseline gap-2 flex-1">
                         <p className="text-[12px] font-semibold text-(--text-1)">{c.name}</p>
                         <p className="text-[10px] text-(--text-3) truncate">
-                          {c.days} {c.time} · {c.credit}학점
+                          {c.timeStr}
                         </p>
                       </div>
                     </div>
                   ))}
-
-                  <div className="h-px bg-(--border) my-0.5"/>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-(--text-3)">총 수강 학점</span>
-                    <b className="text-(--text-1)">
-                      {currentCourses.reduce((s,c) => s+c.credit, 0)} 학점
-                    </b>
-                  </div>
+                  {blocks.length === 0 && (
+                    <p className="text-[11px] text-(--text-3) py-1">등록된 수업이 없습니다</p>
+                  )}
                 </div>
               </div>
 
               {/* ##A2-2 다가오는 일정 (side bar 참조) */}
-              <div className="bg-(--surface) rounded-xl border border-(--border) 
+              <div className="bg-(--surface) rounded-xl border border-(--border)
                               overflow-hidden flex-1"
                   style={{ boxShadow: 'var(--shadow-card)' }}>
                 <div className="px-3.5 py-2.5 border-b border-(--border)">
                   <span className="font-bold text-[12px]">다가오는 일정</span>
                 </div>
                 <div className="flex flex-col divide-y divide-(--border)">
-                  {SCHEDULE_LIST.map(c => (
-                    <div key={c.label}
-                        className="flex items-center gap-2.5 px-3.5 py-2
-                                    hover:bg-(--surface-2) 
-                                    transition-colors cursor-pointer">
-                      <span className={`px-1.5 py-0.5 rounded-full 
-                                        text-[9px] font-bold shrink-0
-                        bg-(--surface-2) text-(--text-2) border border-(--border)`}>
-                        D-{c.dday}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-(--text-1)">
-                          {c.label}
-                        </p>
-                        <p className="text-[10px] text-(--text-3)">
-                          {c.date}
-                        </p>
+                  {events.slice(0, 5).map(ev => {
+                    const dDay = calcDday(ev.event_date);
+                    const warn = dDay <= dDayWarn;
+                    return (
+                      <div key={ev.id}
+                          className="flex items-center gap-2.5 px-3.5 py-2
+                                      hover:bg-(--surface-2)
+                                      transition-colors cursor-pointer">
+                        <span className={`px-1.5 py-0.5 rounded-full
+                                          text-[9px] font-bold shrink-0
+                          ${warn
+                            ? 'bg-(--warn-bg) text-(--warn-text)'
+                            : 'bg-(--surface-2) text-(--text-2) border border-(--border)'
+                          }`}>
+                          D-{dDay}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-(--text-1)">
+                            {ev.title}
+                          </p>
+                          <p className="text-[10px] text-(--text-3)">
+                            {formatEventDate(ev.event_date, ev.event_time)}
+                          </p>
+                        </div>
                       </div>
+                    );
+                  })}
+                  {events.length === 0 && (
+                    <div className="flex items-center justify-center py-6
+                                    text-[11px] text-(--text-3)">
+                      등록된 일정이 없습니다
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -362,8 +612,12 @@ function Timetable() {
                 </div>
 
                 {/* 일정 저장 버튼 추가 @ */}
-                <button className="px-4 py-2 rounded-lg text-[12px] font-semibold w-full
-                                  bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
+                <button
+                  onClick={saveEvent}
+                  disabled={!evForm.title || !evForm.date}
+                  className="px-4 py-2 rounded-lg text-[12px] font-semibold w-full
+                             bg-(--text-1) text-(--surface) hover:opacity-85
+                             transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
                   일정 저장
                 </button>
               </div>
@@ -377,36 +631,51 @@ function Timetable() {
                               flex justify-between items-center">
                 <span className="font-bold text-[13px]">내 일정 목록</span>
                 <span className="text-[11px] text-(--text-3)">
-                  {SCHEDULE_LIST.length}개
+                  {events.length}개
                 </span>
               </div>
               <div className="flex flex-col divide-y divide-(--border)">
-                {SCHEDULE_LIST.map(ev => (
-                  <div key={ev.label}
-                      className="flex items-center gap-3 px-4.5 py-3
-                                  hover:bg-(--surface-2) 
-                                  transition-colors cursor-pointer">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] 
-                                      font-bold shrink-0
-                      ${ev.warn
-                        ? 'bg-(--warn-bg) text-(--warn-text)'
-                        : 'bg-(--badge-neutral-bg) text-(--badge-neutral-text)'
-                      }`}>
-                      D-{ev.dday}
-                    </span>
-                    
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-(--text-1)">{ev.label}</p>
-                      <p className="text-[10px] text-(--text-3)">{ev.date}</p>
-                    </div>
+                {events.map(ev => {
+                  const dDay = calcDday(ev.event_date);
+                  const warn = dDay <= dDayWarn;
+                  return (
+                    <div key={ev.id}
+                        className="flex items-center gap-3 px-4.5 py-3
+                                    hover:bg-(--surface-2)
+                                    transition-colors cursor-pointer">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px]
+                                        font-bold shrink-0
+                        ${warn
+                          ? 'bg-(--warn-bg) text-(--warn-text)'
+                          : 'bg-(--badge-neutral-bg) text-(--badge-neutral-text)'
+                        }`}>
+                        D-{dDay}
+                      </span>
 
-                    {/* 삭제 기능 추가 @  */}
-                    <button className="text-[10px] text-(--text-3) 
-                                       hover:text-(--warn-text)  transition-colors">
-                      삭제
-                    </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-(--text-1)">{ev.title}</p>
+                        <p className="text-[10px] text-(--text-3)">
+                          {formatEventDate(ev.event_date, ev.event_time)}
+                          {ev.type !== '기타' && ` · ${ev.type}`}
+                        </p>
+                      </div>
+
+                      {/* 삭제 기능 추가 @ */}
+                      <button
+                        onClick={() => deleteEvent(ev.id)}
+                        className="text-[10px] text-(--text-3)
+                                   hover:text-(--warn-text) transition-colors">
+                        삭제
+                      </button>
+                    </div>
+                  );
+                })}
+                {events.length === 0 && (
+                  <div className="flex items-center justify-center py-8
+                                  text-[11px] text-(--text-3)">
+                    등록된 일정이 없습니다
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -440,44 +709,69 @@ function Timetable() {
         <div>
           <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">요일</p>
           <div className="flex gap-1.5">
-            {/* 1열은 시간 라벨이므로.. i+1+1 => i+2 로 매핑 */}
-            {DAY_COLS.map((d, i) => (
-              <button key={d} 
-                      onClick={() => setBForm(p => ({ ...p, col:i+2 }))}
-                      className={`flex-1 py-1.5 rounded-lg text-[12px] font-medium 
-                                  border transition-colors
-                        ${bForm.col === i+2 
-                            ? 'bg-(--accent) text-(--surface) border-(--accent)' 
-                            : 'border-(--border) text-(--text-2) hover:bg-(--surface-2)'}`}>
-                {d}
-              </button> 
-            ))}
+            {/* 1열은 시간 라벨이므로 i+2 로 매핑 */}
+            {DAY_COLS.map((d, i) => {
+              const colNum  = i + 2;
+              const selected = bForm.dayTimes.find(dt => dt.col === colNum);
+              return (
+                <button key={d}
+                        onClick={() => {
+                          if (selected) {
+                            // 이미 선택된 요일 => 해제
+                            setBForm(p => ({ ...p, dayTimes: p.dayTimes.filter(dt => dt.col !== colNum) }));
+                          } else {
+                            // 새로 선택 => 기본 시간으로 추가
+                            setBForm(p => ({ ...p, dayTimes: [...p.dayTimes, { col:colNum, startTime:'09:00', endTime:'11:00' }] }));
+                          }
+                        }}
+                        className={`flex-1 py-1.5 rounded-lg text-[12px] font-medium
+                                    border transition-colors
+                          ${selected
+                              ? 'bg-(--accent) text-(--surface) border-(--accent)'
+                              : 'border-(--border) text-(--text-2) hover:bg-(--surface-2)'}`}>
+                  {d}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 시작-종료 시간 입력 */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-          <div>
-            <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">시작 시간</p>
-            <input type="time" value={bForm.startTime}
-                   onChange={e => setBForm(p => ({ ...p, startTime:e.target.value }))}
-                   className="w-full px-3 py-2 text-[12px] rounded-lg 
-                              bg-(--surface) border border-(--border)
-                              text-(--text-1) focus:outline-none
-                              focus:border-(--text-2) transition-colors" />
-          </div>
+        {/* 선택된 요일별 시간 입력 (요일마다 다른 시간대 설정 가능) */}
+        {[...bForm.dayTimes]
+         .sort((a, z) => a.col - z.col)
+         .map(dt => (
+          <div key={dt.col} className="grid grid-cols-[28px_1fr_auto_1fr] items-end gap-2">
 
-          <span className="text-(--text-3) pb-2">~</span>
-          <div>
-            <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">종료 시간</p>
-            <input type="time" value={bForm.endTime}
-                   onChange={e => setBForm(p => ({ ...p, endTime:e.target.value }))}
-                   className="w-full px-3 py-2 text-[12px] rounded-lg 
-                              bg-(--surface) border border-(--border)
-                              text-(--text-1) focus:outline-none 
-                              focus:border-(--text-2) transition-colors" />
+            {/* 요일 라벨 */}
+            <span className="text-[12px] font-bold pb-2 text-center"
+                  style={{ color:'var(--accent)' }}>
+              {COL_TO_DAY[dt.col]}
+            </span>
+
+            <div>
+              <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">시작</p>
+              <input type="time" value={dt.startTime}
+                     onChange={e => updateDayTime(dt.col, 'startTime', e.target.value)}
+                     className="w-full px-3 py-2 text-[12px] rounded-lg
+                                bg-(--surface) border border-(--border)
+                                text-(--text-1) focus:outline-none
+                                focus:border-(--text-2) transition-colors" />
+            </div>
+
+            <span className="text-(--text-3) pb-2">~</span>
+
+            <div>
+              <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">종료</p>
+              <input type="time" value={dt.endTime}
+                     onChange={e => updateDayTime(dt.col, 'endTime', e.target.value)}
+                     className="w-full px-3 py-2 text-[12px] rounded-lg
+                                bg-(--surface) border border-(--border)
+                                text-(--text-1) focus:outline-none
+                                focus:border-(--text-2) transition-colors" />
+            </div>
+
           </div>
-        </div>
+        ))}
 
         {/* 영역 구분 */}
         <div>
@@ -526,9 +820,9 @@ function Timetable() {
         <div className="p-4 flex flex-col gap-2">
           
           <div className="px-3 py-2 rounded-lg text-center text-[12px]"
-               style={{ background:`var(--timetable-${editBlock.type}-bg)`, 
-                        border:`1px solid var(--timetable-${editBlock.type}-bd)`, 
-                        color:`var(--timetable-${editBlock.type}-text)` }}>
+               style={{ background:`var(--timetable-${colorMap[editBlock.name]}-bg)`,
+                        border:`1px solid var(--timetable-${colorMap[editBlock.name]}-bd)`,
+                        color:`var(--timetable-${colorMap[editBlock.name]}-text)` }}>
             {editBlock.time} &nbsp; · 
             &nbsp; {TYPE_OPTS.find(t => t.value === editBlock.type)?.label}
           </div>

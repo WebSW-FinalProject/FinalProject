@@ -35,6 +35,10 @@
   --timetable-p-bg: #EAE8F5; --timetable-p-bd: #BCB8DC; --timetable-p-text: #3A3060;
   --timetable-c-bg: #E0EEF8; --timetable-c-bd: #9CC0DE; --timetable-c-text: #1A3A5A;
   --timetable-g-bg: #D8E8F5; --timetable-g-bd: #88B4D5; --timetable-g-text: #0F3055;
+  --timetable-v-bg: #F0E8FF; --timetable-v-bd: #C8A8F0; --timetable-v-text: #5020A0;
+  --timetable-i-bg: #E8E8FF; --timetable-i-bd: #A8A8E8; --timetable-i-text: #2828A0;
+  --timetable-l-bg: #F0F0FF; --timetable-l-bd: #C0C0F0; --timetable-l-text: #4040A0;
+  --timetable-n-bg: #D0DCFF; --timetable-n-bd: #7090E0; --timetable-n-text: #102080;
 }
 
 /* 다크 모드 */
@@ -70,6 +74,10 @@
   --timetable-p-bg: #181E30; --timetable-p-bd: #252F4A; --timetable-p-text: #6FA5D5;
   --timetable-c-bg: #172030; --timetable-c-bd: #233248; --timetable-c-text: #5B9DD0;
   --timetable-g-bg: #15202E; --timetable-g-bd: #1F3248; --timetable-g-text: #5095CE;
+  --timetable-v-bg: #200A40; --timetable-v-bd: #501880; --timetable-v-text: #C888F8;
+  --timetable-i-bg: #0E0E48; --timetable-i-bd: #1E1E88; --timetable-i-text: #8888F0;
+  --timetable-l-bg: #181838; --timetable-l-bd: #282878; --timetable-l-text: #A0A0E8;
+  --timetable-n-bg: #081020; --timetable-n-bd: #101848; --timetable-n-text: #5070C0;
 }
 
 body {

@@ -70,13 +70,13 @@ async function deleteComment({ commentId, requesterId }) {
 }
 
 async function getMyData(userId) {
-  const [written, liked, bookmarked, comments] = await Promise.all([
+  const [written, liked, bookmarked, commented] = await Promise.all([
     repo.findPostsByAuthor(userId, 0),
     repo.findPostsLikedByUser(userId),
     repo.findPostsBookmarkedByUser(userId),
-    repo.findCommentsByUser(userId),
+    repo.findPostsCommentedByUser(userId), // 댓글 내용 단순표시=>블록 변경
   ]);
-  return { written, liked, bookmarked, comments };
+  return { written, liked, bookmarked, commented };
 }
 
 module.exports = {

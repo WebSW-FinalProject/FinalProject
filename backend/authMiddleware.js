@@ -19,7 +19,8 @@ module.exports = (req, res, next) => {
    
    catch (error) {
     return res.status(401).json({
-        message: error
+        message: error.message 
+        || '인증 오류가 발생했습니다.'
     })
    }
 };

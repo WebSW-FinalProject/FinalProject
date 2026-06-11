@@ -7,12 +7,15 @@ USE UniguideDB;
 -- users
 -- id, email, pw(hash), username, enroll_date(가입일)
 -- dash 연결 : target_gpa 추가 : 목표 학점(유저 직접 설정) DB연결 
+-- header 연결 : department(학과), grade_year(학년) 추가: 프로필정보
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   email         VARCHAR(255)  NOT NULL,
   password_hash VARCHAR(255)  NOT NULL,
   username      VARCHAR(80)   NOT NULL,
   target_gpa    DECIMAL(3,2)  NOT NULL DEFAULT 4.20,
+  department    VARCHAR(60)   NULL,
+  grade_year    TINYINT       NULL,           
   enroll_date   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_email (email)
@@ -138,4 +141,37 @@ CREATE TABLE IF NOT EXISTS post_bookmarks (
   PRIMARY KEY (post_id, user_id),
   CONSTRAINT fk_bookmarks_post FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
   CONSTRAINT fk_bookmarks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- schedule_events (유저 일정 / 과제, 시험, 발표 등)
+-- event_date(DATE), event_time(TIME, 선택), type(과제/시험/발표/프로젝트/기타)
+-- FK: user_id => users(id), CASCADE
+CREATE TABLE IF NOT EXISTS schedule_events (
+  id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  user_id     INT UNSIGNED  NOT NULL,
+  title       VARCHAR(100)  NOT NULL,
+  event_date  DATE          NOT NULL,
+  event_time  TIME          NULL,
+  type        VARCHAR(20)   NOT NULL DEFAULT '기타',
+  memo        TEXT          NULL,
+  log_date    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_events_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- timetable_blocks (유저 직접 추가: 시간표 블럭)
+-- col(2~6 = 월~금), gird_row("startRow/endRow": 교시), time("09:00~11:00" 표시용)
+-- FK: user_id => users(id), CASCADE
+CREATE TABLE IF NOT EXISTS timetable_blocks (
+  id       INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  user_id  INT UNSIGNED  NOT NULL,
+  col      TINYINT       NOT NULL,
+  grid_row VARCHAR(10)   NOT NULL, 
+  name     VARCHAR(100)  NOT NULL,
+  time     VARCHAR(20)   NOT NULL,
+  type     VARCHAR(10)   NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_blocks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

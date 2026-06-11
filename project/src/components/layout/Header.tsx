@@ -2,7 +2,7 @@
 import Logo from '../logo.tsx';
 import { useState } from 'react';
 import type { Section } from '../../hooks/useNavigation';
-import { Moon, Sun, Settings, HelpCircle, LogOut, Trash2 } from 'lucide-react';
+import { Moon, Sun, Settings, LogOut, Trash2, Upload } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../ui/Popup';
 
 interface HeaderProps {
@@ -11,6 +11,9 @@ interface HeaderProps {
   isDark: boolean;
   setDark: (s: boolean) => void;
   onLogout?: () => void; // 프로필 팝업 - 로그아웃 연결
+  username?: string;       // 프로필 정보 - 유저명 연결 추가
+  deptLabel?: string;      // 프로필 정보 - NN학부 N학년 형태 (엑셀 업로드 후 채워짐)
+  onReupload?: () => void; // 프로필 목록(드롭다운) - 엑셀 재업로드 버튼 추가
 }
 
 const menu: { id: Section; label: string } [] = [
@@ -19,7 +22,8 @@ const menu: { id: Section; label: string } [] = [
   { id: 'courses', label: '수강신청 관리' },
 ]; 
 
-function Header({ section, goTo, isDark, setDark, onLogout }: HeaderProps) {
+function Header({ section, goTo, isDark, setDark,
+                  onLogout, username, deptLabel, onReupload }: HeaderProps) {
   const [currentLang, setLang]     = useState('KOR'); 
       // 언어 바꾸기 상태 관리 => App.tsx 로 옮길 가능성 있음
 
@@ -105,10 +109,10 @@ function Header({ section, goTo, isDark, setDark, onLogout }: HeaderProps) {
                 onClick={() => setProfile(!profileOpen)}
                 className="w-7.5 h-7.5 rounded-lg bg-(--navy) text-white
                           text-[11px] font-bold flex items-center justify-center">
-                이
-              </button>
+                {username?.charAt(0) || 'G'}
+              </button> {/* 실제 username 첫글자 가져오기(없으면 Guest) */}
 
-              {/* 드롭다운 (아직 구성이 좀 애매함) */}
+              {/* 드롭다운 @ */}
               {profileOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 rounded-xl overflow-hidden z-200
                                 border border-(--border) bg-(--surface)"
@@ -117,18 +121,25 @@ function Header({ section, goTo, isDark, setDark, onLogout }: HeaderProps) {
                   <div className="flex items-center gap-2.5 px-3 py-3">
                     <div className="w-9 h-9 rounded-lg bg-(--navy) text-white
                                     flex items-center justify-center text-[13px] font-bold shrink-0">
-                      이
+                      {username?.charAt(0) || '?'}
                     </div>
+
                     <div>
-                      <p className="text-[13px] font-bold text-(--text-1)">이문세</p>
-                      <p className="text-[10px] text-(--text-3)">소프트웨어학부 3학년</p>
+                      <p className="text-[13px] font-bold text-(--text-1)">
+                        {username || 'Guest'}
+                      </p>
+                      <p className="text-[10px] text-(--text-3)">{deptLabel || '학과 정보 없음'}</p>
                     </div>
+                    {/* 프로필 정보 연결 완료 @ */}
+
                   </div>
-                  <div className="h-px bg-(--border) mx-1 mb-1"/>
+                  <div className="h-px bg-(--border) mx-1 mb-1"/> 
+                  {/* 엑셀 파일 재업로드 목록 추가, 도움말 제거 */}
                   {[
                     { icon: <Settings size={13}/>,   label: '설정',  
                       action: () => { setProfile(false); setSettings(true); } },
-                    { icon: <HelpCircle size={13}/>,  label: '도움말', action: () => {} },
+                    { icon: <Upload size={13}/>,     label: '성적표 재업로드',
+                      action: () => { setProfile(false); onReupload?.(); } },
                   ].map(item => (
                     <button key={item.label}
                             onClick={item.action}

@@ -10,9 +10,11 @@ import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 interface Props {
   open: boolean;
   onSuccess: () => void;
+  onClose?: () => void; 
+  // 재업로드일 때만 전달 => X버튼 표시 (최초 업로드는 닫기 불가)
 }
 
-function ExcelUploadPopup({ open, onSuccess }: Props) {
+function ExcelUploadPopup({ open, onSuccess, onClose }: Props) {
 
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,11 +65,13 @@ function ExcelUploadPopup({ open, onSuccess }: Props) {
   }
 
 
-  // X 버튼 없고, onClose 인자는 관리함수 받아오지 않게 (못 닫음)
+  // 최초 업로드 : X 버튼 없음 (onClose: null => 닫기 불가!)
+  // 재업로드 : onClose 전달 시 X 버튼 표시
   return (
-    <Popup open={open} onClose={() => {}} width="440px">
+    <Popup open={open} onClose={onClose ?? (() => {})} width="440px">
       <PopupHeader
         title={<><Upload size={14} className="text-(--accent)"/> 성적표 업로드</>}
+        onClose={onClose}
       />
 
       <div className="px-5 py-5 flex flex-col gap-4">

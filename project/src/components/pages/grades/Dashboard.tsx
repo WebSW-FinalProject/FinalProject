@@ -13,9 +13,10 @@ import {
 import gradeImg from '../../../assets/grade.png';
 
 
-// 메인 컴포넌트 함수 (onGoToBoard)
-function Dashboard({ onGoTimetable, onGoToBoard }:
-  { onGoTimetable?: () => void; onGoToBoard?: (postId?: number) => void }) {
+// 엑셀 파일 재업로드 여부 받음.
+function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
+  { onGoTimetable?: () => void; onGoToBoard?: (postId?: number) => void;
+    reuploadOpen?: boolean; onReuploadDone?: () => void }) {
 
   // 서버 데이터 + API 호출 (useDashConnect hook)
   const {
@@ -34,7 +35,9 @@ function Dashboard({ onGoTimetable, onGoToBoard }:
   const [targetInput, setTargetInput]       = useState('');
 
   // 엑셀 업로드 팝업 : 로드 완료 후 학기 없으면 자동 표시(강제. X버튼 없음)
-  const uploadOpen = !dataLoading && semesters.length === 0;
+  // 헤더에서 재업로드 클릭 시 reuploadOpen=true => X버튼 있음(닫을 수 있음)
+  const uploadOpen = (!dataLoading && semesters.length === 0) 
+                     || reuploadOpen === true;
 
   // 열려있는 학기 토글 블럭 useState
   const [expandedSems, setExpandedSems] = useState<number[]>([]);
@@ -1346,8 +1349,12 @@ function Dashboard({ onGoTimetable, onGoToBoard }:
 
     </div>
 
-    {/* == 엑셀 업로드 팝업 (데이터 없을 때 강제 표시) == */}
-    <ExcelUploadPopup open={uploadOpen} onSuccess={loadData} />
+    {/* == 엑셀 업로드 팝업 (데이터 없을 때 강제 표시 & 헤더 재업로드 버튼으로도 열림) == */}
+    <ExcelUploadPopup
+      open={uploadOpen}
+      onSuccess={() => { onReuploadDone?.(); loadData(); }}
+      onClose={reuploadOpen ? onReuploadDone : undefined}
+    />
 
     {/* == 학기 추가 팝업 == */}
     <Popup open={addSemOpen} onClose={() => setAddSemOpen(false)} width="460px">
