@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Edit3, Heart, MessageCircle, Eye, Zap, Bookmark, Search, ArrowUp, ArrowDown, 
+import { Edit3, Heart, MessageCircle, Eye, Zap, Bookmark, Search, ArrowUp, ArrowDown,
          ThumbsUp, FileText, BookOpen, Briefcase, TrendingUp } from 'lucide-react';
 import Popup, { PopupHeader } from '../ui/Popup';
+import { useLang } from '../../LangContext';
 
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/ko'; 
+import 'dayjs/locale/ko';
+import 'dayjs/locale/en';
 
 dayjs.extend(relativeTime);
 dayjs.locale('ko');
@@ -43,12 +45,8 @@ const CATEGORIES = {
                 bg: 'var(--badge-neutral-bg)', color: 'var(--badge-neutral-text)' },
 };
 
-const FILTERS = [
-  { id: 'all',        label: '전체'       },
-  { id: 'GRADUATION', label: 'Graduation' },
-  { id: 'JOB_HUNT',   label: 'Job Hunt'  },
-  { id: 'DAILY',      label: 'Daily'     },
-];
+const FILTER_IDS = ['all', 'GRADUATION', 'JOB_HUNT', 'DAILY'] as const;
+// 'all' label은 boardAll 키로 번역, 나머지는 CATEGORIES.label (영어 고정)
 
 function getCat(category: string) {
   if (category === 'GRADUATION') return CATEGORIES.GRADUATION;
@@ -83,6 +81,11 @@ async function apiFetch(url: string, options: RequestInit = {}) {
 
 // 컴포넌트
 function Board({ initialPostId }: { initialPostId?: number | null }) {
+  const { t, lang } = useLang();
+
+  // lang 변경 시 dayjs locale 동기화
+  useEffect(() => { dayjs.locale(lang === 'ko' ? 'ko' : 'en'); }, [lang]);
+
   // 피드 상태
   const [posts, setPosts]           = useState<Post[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -231,7 +234,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
   // 게시글 작성 
   async function handleSubmitPost() {
     if (!writeForm.title.trim() || !writeForm.content.trim()) {
-      alert('제목과 내용을 입력해주세요.');
+      alert(t('boardTitlePh') + ' / ' + t('boardContentPh'));
       return;
     }
     setSubmitting(true);
@@ -296,13 +299,13 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[16px] font-extrabold text-(--text-1)"
             style={{ fontFamily:"'Bricolage Grotesque', Inter, sans-serif" }}>
-          게시판
+          {t('boardTitle')}
         </h2>
         <button onClick={() => setWriting(true)}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11px]
-                           font-semibold bg-(--text-1) text-(--surface) 
+                           font-semibold bg-(--text-1) text-(--surface)
                            hover:opacity-85 transition-opacity">
-          <Edit3 size={12}/> 글쓰기
+          <Edit3 size={12}/> {t('boardNewPost')}
         </button>
       </div>
 
@@ -316,7 +319,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
                style={{ boxShadow:'var(--shadow-card)' }}>
             <div className="px-3.5 py-2.5">
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-(--text-1)">
-                <Zap size={12} className="text-(--accent)"/> 이번 주 화제글
+                <Zap size={12} className="text-(--accent)"/> {t('boardTrending')}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 p-2.5">
@@ -398,16 +401,16 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
             </div>
             <div className="grid grid-cols-2 divide-x divide-y divide-(--border)">
               {[
-                { id:'mine',  icon:<FileText size={16}/>,      label:'내 글',     sub:'내가 작성한 글' },
-                { id:'saved', icon:<Bookmark size={16}/>,      label:'저장글',    sub:'북마크한 글'   },
-                { id:'liked', icon:<Heart size={16}/>,         label:'좋아요글',  sub:'좋아요한 글'   },
-                { id:'commented', icon:<MessageCircle size={16}/>, label:'댓글단 글', sub:'댓글 단 글' },
+                { id:'mine',      icon:<FileText size={16}/>,      labelKey:'boardMyPosts',   subKey:'boardMyPostsSub'   },
+                { id:'saved',     icon:<Bookmark size={16}/>,      labelKey:'boardSaved',     subKey:'boardSavedSub'     },
+                { id:'liked',     icon:<Heart size={16}/>,         labelKey:'boardLiked',     subKey:'boardLikedSub'     },
+                { id:'commented', icon:<MessageCircle size={16}/>, labelKey:'boardCommented', subKey:'boardCommentedSub' },
               ].map(item => (
                 <div key={item.id} onClick={() => openPopup(item.id)}
                      className="flex flex-col items-center gap-1 py-3.5 cursor-pointer hover:bg-(--surface-2) transition-colors">
                   <span className="text-(--accent)">{item.icon}</span>
-                  <span className="text-[11px] font-semibold text-(--text-1)">{item.label}</span>
-                  <span className="text-[9px] text-(--text-3)">{item.sub}</span>
+                  <span className="text-[11px] font-semibold text-(--text-1)">{t(item.labelKey)}</span>
+                  <span className="text-[9px] text-(--text-3)">{t(item.subKey)}</span>
                 </div>
               ))}
             </div>
@@ -468,16 +471,16 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[15px] font-bold text-(--text-1)">전체 글</span>
+            <span className="text-[15px] font-bold text-(--text-1)">{t('boardAllPosts')}</span>
             <div className="flex gap-1 flex-wrap">
-              {FILTERS.map(f => (
-                <button key={f.id}
-                        onClick={() => { setLatestFilter(f.id); setPage(0); }}
+              {FILTER_IDS.map(id => (
+                <button key={id}
+                        onClick={() => { setLatestFilter(id); setPage(0); }}
                         className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors
-                          ${latestFilter === f.id
+                          ${latestFilter === id
                             ? 'bg-(--rec-neutral-text)/70 text-white font-bold'
                             : 'border border-(--border) text-(--text-2) hover:bg-(--surface-2)'}`}>
-                  {f.label}
+                  {id === 'all' ? t('boardAll') : (CATEGORIES[id as keyof typeof CATEGORIES]?.label ?? id)}
                 </button>
               ))}
             </div>
@@ -487,7 +490,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
                   <button onClick={() => setSortOrder(s)}
                           className={`px-2.5 py-1 text-[10px] font-medium transition-colors
                             ${sortOrder === s ? 'bg-(--rec-neutral-text)/70 text-white' : 'text-(--text-2) hover:bg-(--surface-2)'}`}>
-                    {s === 'latest' ? '최신순' : '좋아요순'}
+                    {s === 'latest' ? t('boardLatest') : t('boardMostLiked')}
                   </button>
                 </div>
               ))}
@@ -497,7 +500,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
           <div className="flex items-center gap-2">
             <div className="relative flex items-center">
               <Search size={12} className="absolute left-2.5 text-(--accent)"/>
-              <input placeholder="검색..."
+              <input placeholder={t('boardSearch')}
                      value={searchInput}
                      onChange={e => setSearchInput(e.target.value)}
                      onKeyDown={handleSearchKey}
@@ -513,8 +516,8 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
              style={{ boxShadow:'var(--shadow-card)' }}>
           {posts.length === 0 && !feedLoading ? (
             <div className="p-8 text-center">
-              <p className="text-[13px] text-(--text-2) mt-45">검색 결과가 없습니다.</p>
-              <p className="text-[10px] text-(--text-3) mt-2">검색어를 다시 한 번 확인해 주세요</p>
+              <p className="text-[13px] text-(--text-2) mt-45">{t('boardNoResults')}</p>
+              <p className="text-[10px] text-(--text-3) mt-2">{t('boardNoResultsSub')}</p>
             </div>
           ) : (
             posts.map(post => {
@@ -548,7 +551,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
             <button onClick={() => fetchFeed(page + 1)} disabled={feedLoading}
                     className="flex items-center justify-center gap-1.5 w-full py-2.5 text-[12px] text-(--text-2)
                                hover:bg-(--surface-2) transition-all border-t border-(--border) disabled:opacity-50">
-              {feedLoading ? '불러오는 중...' : <><ArrowDown size={12}/> 더 보기</>}
+              {feedLoading ? t('loading') : <><ArrowDown size={12}/> {t('boardLoadMore')}</>}
             </button>
           )}
         </div>
@@ -561,10 +564,10 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
       <Popup open={true} onClose={() => setPopupTab('')} width="560px">
         <PopupHeader
           title={
-            popupTab === 'mine'      ? '내가 쓴 글'  :
-            popupTab === 'saved'     ? '저장한 글'   :
-            popupTab === 'liked'     ? '좋아요한 글' :
-            popupTab === 'commented' ? '댓글단 글'   : ''
+            popupTab === 'mine'      ? t('boardMyPostsPopup')  :
+            popupTab === 'saved'     ? t('boardSavedPopup')    :
+            popupTab === 'liked'     ? t('boardLikedPopup')    :
+            popupTab === 'commented' ? t('boardCommentedPopup') : ''
           }
           onClose={() => setPopupTab('')}
         />
@@ -572,7 +575,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
           {(
             getPopupPosts().length === 0 ? (
               <p className="py-8 text-center text-[12px] text-(--text-3)">
-                {!myData ? '불러오는 중...' : '게시글이 없습니다.'}
+                {!myData ? t('loading') : t('boardNoPosts')}
               </p>
             ) : (
               getPopupPosts().map(post => {
@@ -601,22 +604,22 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
     {writing && (
       <Popup open={true} onClose={() => setWriting(false)} width="560px">
         <PopupHeader
-          title={<><Edit3 size={14} className="text-(--accent)"/> 게시글 작성</>}
+          title={<><Edit3 size={14} className="text-(--accent)"/> {t('boardWritePopup')}</>}
           onClose={() => setWriting(false)}
         />
         <div className="p-5 flex flex-col gap-3.5">
           <div className="flex gap-2">
-            {FILTERS.filter(f => f.id !== 'all').map(filter => {
-              const isSelected  = writeForm.category === filter.id;
-              const categoryInfo = CATEGORIES[filter.id as keyof typeof CATEGORIES];
+            {FILTER_IDS.filter(id => id !== 'all').map(id => {
+              const isSelected   = writeForm.category === id;
+              const categoryInfo = CATEGORIES[id as keyof typeof CATEGORIES];
               return (
-                <button key={filter.id}
-                        onClick={() => setWriteForm(p => ({ ...p, category: filter.id }))}
+                <button key={id}
+                        onClick={() => setWriteForm(p => ({ ...p, category: id }))}
                         className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors flex items-center gap-1.5
                           ${isSelected
                             ? 'border-(--text-2) bg-(--surface-2) text-(--text-1)'
                             : 'border-(--border) text-(--text-3) hover:bg-(--surface-2)'}`}>
-                  {categoryInfo?.icon} {filter.label}
+                  {categoryInfo?.icon} {categoryInfo?.label}
                 </button>
               );
             })}
@@ -624,24 +627,24 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
 
           <input value={writeForm.title}
                  onChange={e => setWriteForm(p => ({ ...p, title: e.target.value }))}
-                 placeholder="제목을 입력하세요"
+                 placeholder={t('boardTitlePh')}
                  className="w-full px-3 py-2 text-[13px] font-semibold rounded-lg bg-(--surface) border border-(--border)
                             text-(--text-1) placeholder:text-(--text-3) focus:outline-none focus:border-(--text-2) transition-colors" />
 
           <textarea value={writeForm.content}
                     onChange={e => setWriteForm(p => ({ ...p, content: e.target.value }))}
-                    placeholder="내용을 입력하세요"
+                    placeholder={t('boardContentPh')}
                     className="w-full h-32 px-3 py-2 text-[12px] rounded-lg resize-none bg-(--surface) border border-(--border)
                                text-(--text-1) placeholder:text-(--text-3) focus:outline-none focus:border-(--text-2) transition-colors" />
 
           <div className="flex gap-2 justify-end">
             <button onClick={() => setWriting(false)}
                     className="px-4 py-1.5 rounded-lg text-[12px] border border-(--border) text-(--text-2) hover:bg-(--surface-2) transition-colors">
-              취소
+              {t('cancel')}
             </button>
             <button onClick={handleSubmitPost} disabled={submitting}
                     className="px-4 py-1.5 rounded-lg text-[12px] font-semibold bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity disabled:opacity-50">
-              {submitting ? '게시 중...' : '게시'}
+              {submitting ? t('boardPosting') : t('boardPost')}
             </button>
           </div>
         </div>
@@ -681,19 +684,19 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
             <button onClick={handleBookmark}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] border border-(--border) transition-colors
                       ${bookmarkedByMe ? 'bg-(--accent) text-white' : 'text-(--text-2) hover:bg-(--surface-2)'}`}>
-              <Bookmark size={13}/> 북마크
+              <Bookmark size={13}/> {t('boardBookmark')}
             </button>
           </div>
 
           {/* 댓글 섹션 */}
           <div className="py-4">
             <p className="text-[13px] font-bold text-(--text-1) mb-3">
-              댓글 <span className="text-(--accent)">{comments.length}</span>
+              {t('boardComments')} <span className="text-(--accent)">{comments.length}</span>
             </p>
 
             <div className="flex flex-col gap-0">
               {comments.length === 0 ? (
-                <p className="text-[12px] text-(--text-3) text-center py-4">첫 번째 댓글을 남겨보세요.</p>
+                <p className="text-[12px] text-(--text-3) text-center py-4">{t('boardFirstComment')}</p>
               ) : (
                 visibleComments.map(c => (
                   <div key={c.id} className="flex items-start gap-2.5 py-3 border-b border-(--border)">
@@ -716,8 +719,8 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
                         className="flex items-center justify-center gap-1.5 w-full py-2.5 text-[12px] text-(--text-2)
                                    hover:bg-(--surface-2) transition-all border-t border-(--border)">
                   {showAllComments
-                    ? <><ArrowUp size={12}/> 접기</>
-                    : <><ArrowDown size={12}/> 더 보기 ({comments.length - COMMENT_LIMIT}개)</>}
+                    ? <><ArrowUp size={12}/> {t('boardCollapse')}</>
+                    : <><ArrowDown size={12}/> {t('boardMore')}{comments.length - COMMENT_LIMIT})</>}
                 </button>
               )}
             </div>
@@ -725,19 +728,19 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
             {/* 댓글 입력 */}
             <div className="flex items-start gap-2.5 mt-3 pt-3 border-t border-(--border)">
               <div className="w-7 h-7 rounded-lg bg-(--navy) text-white flex items-center justify-center text-[11px] font-bold">
-                나
+                {t('boardMe')}
               </div>
               <div className="flex-1">
                 <textarea value={commentInput}
                           onChange={e => setCommentInput(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); } }}
-                          placeholder="댓글을 입력하세요 ..."
+                          placeholder={t('boardCommentPh')}
                           className="w-full px-3 py-2 text-[12px] rounded-lg h-16 bg-(--surface) border border-(--border)
                                      text-(--text-1) placeholder:text-(--text-3) focus:outline-none focus:border-(--text-2) transition-colors" />
                 <div className="flex justify-end mt-1.5">
                   <button onClick={handleAddComment}
                           className="px-4 py-1.5 rounded-lg text-[12px] font-semibold bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-                    등록
+                    {t('boardSubmit')}
                   </button>
                 </div>
               </div>

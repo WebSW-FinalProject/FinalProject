@@ -6,6 +6,7 @@ import { API_BASE } from '../../../api';
 import ExcelUploadPopup from './ExcelUploadPopup';
 import CommunityPreview from './CommunityPreview';
 import { useDashConnect, getCurrentSem } from './dashConnectAPI';
+import { useLang } from '../../../LangContext';
 import {
   GRADE_SCALE, GRADES, semLabel, toChartY, getChartXs,
   gradeStyle, dotColor, sumCredits, calcGpa,
@@ -51,6 +52,14 @@ function Dashboard(
   ) {
 
   // 서버 데이터 + API 호출 (useDashConnect hook)
+  const { t } = useLang();
+
+  // 과목 구분 한글 → 번역 맵 (드롭다운 표시용, DB value는 한국어 유지)
+  const catLabel: Record<string, string> = {
+    '전공필수': t('catReqMajor'), '전공선택': t('catElectMajor'),
+    '교양필수': t('catReqLib'),   '교양선택': t('catElectLib'),
+  };
+
   const {
     semesters, allCourses, gradReqs, dataLoading, targetGpa,
     loadData,
@@ -187,6 +196,29 @@ function Dashboard(
 
   // 이수 완료 과목 (F랑 null 제외, P 포함)
   const completedCourses = allCourses.filter(c => c.grade && c.grade !== 'F');
+
+  // 목표 GPA 달성 힌트 : 이번 학기 미입력 과목 기준 필요 평균 성적 계산
+  const hintNeededGrade: string | null = (() => {
+    if (!currentSem) return null;
+    const ungraded = currentCourses.filter(c => !c.grade);
+    if (ungraded.length === 0) return null;
+    // 이전 학기 성적 기반 (F 포함, null 제외)
+    const past    = allCourses.filter(c => c.semester_id !== currentSem.id && c.grade && GRADE_SCALE[c.grade] != null);
+    const pastPts = past.reduce((s: number, c: any) => s + GRADE_SCALE[c.grade] * c.credit, 0);
+    const pastCr  = past.reduce((s: number, c: any) => s + c.credit, 0);
+    const ungradedCr = ungraded.reduce((s: number, c: any) => s + c.credit, 0);
+    const needed = (targetGpa * (pastCr + ungradedCr) - pastPts) / ungradedCr;
+    if (needed <= 0)  return 'already';
+    if (needed > 4.5) return 'impossible';
+    if (needed > 4.0) return 'A+';
+    if (needed > 3.5) return 'A0';
+    if (needed > 3.0) return 'B+';
+    if (needed > 2.5) return 'B0';
+    if (needed > 2.0) return 'C+';
+    if (needed > 1.5) return 'C0';
+    if (needed > 1.0) return 'D+';
+    return 'D0';
+  })();
 
   // 성적이 입력된 과목만 => 이번학기 예상 GPA 계산
   const filledCourses = currentCourses.filter(c => grades[c.id]);
@@ -327,6 +359,34 @@ function Dashboard(
   }, []);
   const dashColorMap = buildDashColorMap(dashBlocks);
 
+  // alert 섹션용 다가오는 일정 (schedule_events API)
+  type DashEvent = { id: number; title: string; event_date: string; event_time: string | null; type: string };
+  const [dashEvents, setDashEvents] = useState<DashEvent[]>([]);
+
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch(`${API_BASE}/api/schedule`, {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setDashEvents((data as DashEvent[]).slice(0, 3));
+      } catch (e) { console.error('일정 로드 실패:', e); }
+    }
+    loadEvents();
+  }, []);
+
+  // D-day 계산 (event_date: "YYYY-MM-DD")
+  function calcDDay(dateStr: string): string {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr); target.setHours(0, 0, 0, 0);
+    const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
+    if (diff === 0) return 'D-Day';
+    if (diff > 0)  return `D-${diff}`;
+    return `D+${Math.abs(diff)}`;
+  }
 
   // 학점이수현황 — 교양 area별 이수학점 (동적 계산)
   const liberalAreaMap: Record<string, number> = {};
@@ -356,7 +416,7 @@ function Dashboard(
   if (dataLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-(--text-3) text-sm">
-        불러오는 중...
+        {t('loading')}
       </div>
     );
   }
@@ -366,20 +426,29 @@ function Dashboard(
     <>
     <div className="p-3.5 pb-15 w-full">
 
-      {/* ## alert 섹션 (임시, 하드코딩) */}
+      {/* ## alert 섹션 (schedule_events API 기반 동적 표시) */}
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg card-enter
                       bg-(--accent-bg) border border-(--border) whitespace-nowrap
-                      mb-3 text-xs text-(--text-2) ">
+                      mb-3 text-xs text-(--text-2) overflow-hidden">
         <Clock size={11} className="text-(--accent) shrink-0" />
-        <span className="text-[10px] font-bold text-(--accent)">D-7</span>
-        <span>중간성적 입력 마감</span>
-        <span className="text-(--text-3)">·</span>
-        <span><b>06.02</b> 수강신청</span>
-        <span className="text-(--text-3)">·</span>
-        <span><b>06.15</b> 기말고사</span>
-        <span className="ml-auto text-[10px] text-(--text-3) hidden sm:block">
-          2025년 1학기 · 소프트웨어학부
-          </span>
+        {dashEvents.length > 0 ? (
+          <>
+            <span className="text-[10px] font-bold text-(--accent) shrink-0">
+              {calcDDay(dashEvents[0].event_date)}
+            </span>
+            {dashEvents.flatMap((ev, i) => [
+              ...(i > 0 ? [<span key={`sep-${ev.id}`} className="text-(--text-3)">·</span>] : []),
+              <span key={ev.id} className="shrink-0">
+                <b>{ev.event_date.slice(5).replace('-', '.')}</b> {ev.title}
+              </span>,
+            ])}
+          </>
+        ) : (
+          <span className="text-[10px] text-(--text-3)">{t('sideNoEvents')}</span>
+        )}
+        <span className="ml-auto text-[10px] text-(--text-3) hidden sm:block shrink-0">
+          {currentSem ? `${semLabel(currentSem, t)} · ` : ''}{t('footerDept')}
+        </span>
       </div>
 
       {/* ## TOP 2열 구조 (메인 GPA + 졸업현황 블록) */}
@@ -399,7 +468,7 @@ function Dashboard(
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-medium text-(--text-3) mb-1 flex items-center gap-1">
-                  누적 성적
+                  {t('dashCumGPA')}
                 </p>
                 <div className="flex items-baseline gap-1.5 mb-1.5 flex-wrap">
                   <span className="text-[38px] font-bold text-(--accent) tabular-nums leading-none"
@@ -410,29 +479,29 @@ function Dashboard(
                   {topPct !== null && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
                                      bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                      백분율 {topPct}%
+                      {t('dashPercentile')} {topPct}%
                     </span>
                   )}
                 </div>
                 <div className="flex gap-3 text-[11px] text-(--text-2) flex-wrap">
-                  <span>전공 <b className="text-(--text-1) tabular-nums">
+                  <span>{t('dashMajor')} <b className="text-(--text-1) tabular-nums">
                     {(() => {
                       const mc = allCourses.filter(c => c.division === '전공');
                       return calcGpa(mc)?.toFixed(1) ?? '-';
                     })()}
                   </b></span>
-                  <span>교양 <b className="text-(--text-1) tabular-nums">
+                  <span>{t('dashLiberal')} <b className="text-(--text-1) tabular-nums">
                     {(() => {
                       const lc = allCourses.filter(c => c.division === '교양');
                       return calcGpa(lc)?.toFixed(1) ?? '-';
                     })()}
                   </b></span>
-                  <span>최고 <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b>
+                  <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b>
                     <span className="text-[10px] text-(--text-3) ml-0.5">
-                      ({chartSems[gpaList.indexOf(maxGPA)] ? semLabel(chartSems[gpaList.indexOf(maxGPA)]) : '-'})
+                      ({chartSems[gpaList.indexOf(maxGPA)] ? semLabel(chartSems[gpaList.indexOf(maxGPA)], t) : '-'})
                     </span>
                   </span>
-                  <span>등록 <b className="text-(--text-1) tabular-nums">{semesters.length}</b>학기</span>
+                  <span>{t('dashEnrolled')} <b className="text-(--text-1) tabular-nums">{semesters.length}</b> {t('dashSems')}</span>
                 </div>
               </div>
             </div>
@@ -441,16 +510,16 @@ function Dashboard(
             <div className="flex gap-1.5 shrink flex-wrap">
               {/* 데이터 연결 필요 (임시, 하드코딩) */}
               {[
-                { label: '이수학점', value: String(earnedTotal),   sub: gradTotal ? '/ ' + gradTotal : '/ -',
-                  barPct: null, badge: gradTotal > earnedTotal ? (gradTotal - earnedTotal) + '학점 잔여' : gradTotal ? '완료 ✓' : '-' },
-                { label: '전공',     value: String(majorEarned),  sub: majorReqTotal ? '/ ' + majorReqTotal : '/ -',
-                  barPct: null, badge: majorReqTotal > majorEarned ? (majorReqTotal - majorEarned) + ' 잔여' : '완료' },
-                { label: '교양',     value: String(liberalEarned), sub: '/ ' + liberalReqTotal,
-                  barPct: null, badge: liberalEarned >= liberalReqTotal ? '완료 ✓' : (liberalReqTotal - liberalEarned) + '학점 잔여' },
-                { label: '목표 GPA', value: targetGpa.toFixed(1), sub: avgGPA > 0 ? '현재 ' + avgGPA.toFixed(2) : '-',
+                { label: t('dashEarnedCr'),  value: String(earnedTotal),   sub: gradTotal ? '/ ' + gradTotal : '/ -',
+                  barPct: null, badge: gradTotal > earnedTotal ? (gradTotal - earnedTotal) + t('dashRemainSuffix') : gradTotal ? t('dashDone') : '-' },
+                { label: t('dashMajor'),     value: String(majorEarned),  sub: majorReqTotal ? '/ ' + majorReqTotal : '/ -',
+                  barPct: null, badge: majorReqTotal > majorEarned ? (majorReqTotal - majorEarned) + t('dashRemainShort') : t('dashDoneSimple') },
+                { label: t('dashLiberal'),   value: String(liberalEarned), sub: '/ ' + liberalReqTotal,
+                  barPct: null, badge: liberalEarned >= liberalReqTotal ? t('dashDone') : (liberalReqTotal - liberalEarned) + t('dashRemainSuffix') },
+                { label: t('dashTargetGPA'), value: targetGpa.toFixed(1), sub: avgGPA > 0 ? t('dashCurrentPrefix') + avgGPA.toFixed(2) : '-',
                   barPct: null,
-                  badge: avgGPA >= targetGpa ? '달성 ✓' : avgGPA >= targetGpa - 0.3 
-                                             ? '달성 가능' : (targetGpa - avgGPA).toFixed(1) + ' 부족' },
+                  badge: avgGPA >= targetGpa ? t('dashAchieved') : avgGPA >= targetGpa - 0.3
+                                             ? t('dashAchievable') : (targetGpa - avgGPA).toFixed(1) + t('dashShortSuffix') },
               ].map(box => (
 
                 <div key={box.label}
@@ -506,7 +575,7 @@ function Dashboard(
                         flex flex-col justify-between"
              style={{ boxShadow: 'var(--shadow-card)' }}>
           <p className="text-[9px] font-bold text-(--text-3) uppercase tracking-widest mb-2 flex items-center gap-1">
-            졸업 현황
+            {t('dashGradStatus')}
           </p>
           <div>
             <div className="flex items-baseline gap-1">
@@ -515,21 +584,21 @@ function Dashboard(
                 {gradPct}%
               </span>
             </div>
-            <p className="text-[9px] text-(--text-3) mt-0.5">졸업 학점 달성률</p>
+            <p className="text-[9px] text-(--text-3) mt-0.5">{t('dashGradPctLabel')}</p>
             <div className="h-1 rounded-full bg-(--bar-track) mt-2 mb-2.5 overflow-hidden">
               <div className="h-full rounded-full bg-(--bar)" style={{ width: gradPct + '%' }} />
             </div>
           </div>
           <div className="border-t border-(--border) pt-2 flex flex-col gap-1">
             <div className="flex justify-between text-[10px]">
-              <span className="text-(--text-3)">잔여 학기</span>
-              <b className="text-(--text-1)">{remainingSems}학기</b>
+              <span className="text-(--text-3)">{t('dashRemSems')}</span>
+              <b className="text-(--text-1)">{remainingSems}{t('dashSemUnit')}</b>
             </div>
             <div className="flex justify-between text-[10px] items-center">
-              <span className="text-(--text-3)">졸업인증</span>
+              <span className="text-(--text-3)">{t('dashGradCert')}</span>
               <span className="px-1.5 py-px rounded-full text-[8px] font-semibold
                                bg-(--surface-2) text-(--text-2) border border-(--border)">
-                미완료
+                {t('dashIncomplete')}
               </span>
             </div>
           </div>
@@ -550,25 +619,25 @@ function Dashboard(
             <div className="px-4.5 py-3.5 border-b border-(--border)
                             flex justify-between items-center">
               <span className="font-bold text-sm flex items-center gap-1.5">
-                학기별 성적
+                {t('dashSemGrades')}
               </span>
               <button
                 onClick={() => setAddSemOpen(true)}
                 className="text-[11px] font-medium text-(--text-2) border
                            border-(--border) rounded-lg
                            px-2.5 py-1 hover:bg-(--surface-2) transition-colors">
-                + 학기 추가
+                {t('dashAddSem')}
               </button>
             </div>
 
             {/* 학기별 GPA 추이 차트 (API 연결) */}
             <div className="px-4.5 py-4 border-b border-(--border)">
               <div className="flex justify-between items-center mb-2.5">
-                <span className="text-[11px] text-(--text-3)">학기별 GPA 추이</span>
+                <span className="text-[11px] text-(--text-3)">{t('dashGpaTrend')}</span>
                 <div className="flex gap-4 text-[11px] text-(--text-3)">
-                  <span>최고 <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b></span>
-                  <span>최저 <b className="tabular-nums">{minGPA.toFixed(1)}</b></span>
-                  <span>평균 <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
+                  <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b></span>
+                  <span>{t('dashWorst')} <b className="tabular-nums">{minGPA.toFixed(1)}</b></span>
+                  <span>{t('dashAvg')} <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
                 </div>
               </div>
 
@@ -593,7 +662,7 @@ function Dashboard(
                 {/* 목표 GPA 기준선 (DB에서 로드한 targetGpa 기반, 수정 버튼으로 변경 가능) */}
                 <line x1="20" y1={goalLineY} x2="540" y2={goalLineY}
                       stroke="var(--bar)" strokeWidth={1.5} strokeDasharray="5 3" opacity={0.75}/>
-                <text x={543} y={goalLineY + 4} fontSize={8} fill="var(--bar)" fontFamily="Inter" fontWeight={700}>목표</text>
+                <text x={543} y={goalLineY + 4} fontSize={8} fill="var(--bar)" fontFamily="Inter" fontWeight={700}>{t('dashGoalLine')}</text>
 
                 {/* fill + line (완료 구간 + 예상 포인트 점선) */}
                 {chartDataAll.length > 0 && (
@@ -638,7 +707,7 @@ function Dashboard(
                       fontFamily="Inter"
                       fontWeight={p.isPreview || i === completedPts.length - 1 ? 700 : 400}
                       opacity={p.isPreview ? 0.75 : 1}>
-                      {p.isPreview ? '예상' : i === completedPts.length - 1 ? '현재' : chartSems[i] ? semLabel(chartSems[i]) : ''}
+                      {p.isPreview ? t('dashExpectedChart') : i === completedPts.length - 1 ? t('dashCurrentShort') : chartSems[i] ? semLabel(chartSems[i], t) : ''}
                     </text>
                   </g>
                 ))}
@@ -646,7 +715,7 @@ function Dashboard(
 
               {chartDataAll.length === 0 && (
                 <div className="text-center text-[11px] text-(--text-3) py-4">
-                  성적 데이터가 없습니다
+                  {t('dashNoGradeData')}
                 </div>
               )}
             </div>
@@ -665,9 +734,9 @@ function Dashboard(
                   <>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] text-(--text-3)
-                            flex items-center gap-1">성적 분포 · 전체 이수 과목</span>
+                            flex items-center gap-1">{t('dashGradeDistrib')}</span>
                       <span className="text-[10px] text-(--text-3)">
-                        완료 <b className="text-(--text-2) tabular-nums"> {total} </b> 과목</span>
+                        {t('dashCompletedN')} <b className="text-(--text-2) tabular-nums"> {total} </b></span>
                     </div>
                     <div className="flex h-2.5 rounded-full overflow-hidden">
                       <div style={{ width: `${pct(aPlus)}%`, background: 'var(--accent)' }}/>
@@ -679,23 +748,33 @@ function Dashboard(
                       <span className="text-(--accent) font-bold">A+ <span className="tabular-nums">{pct(aPlus)}%</span></span>
                       <span className="text-(--text-2)">A0 <span className="tabular-nums">{pct(aZero)}%</span></span>
                       <span className="text-(--text-3)">B <span className="tabular-nums">{pct(bGrade)}%</span></span>
-                      <span className="text-(--text-3) opacity-60">C이하 <span className="tabular-nums">{pct(others)}%</span></span>
+                      <span className="text-(--text-3) opacity-60">{t('dashBelowC')} <span className="tabular-nums">{pct(others)}%</span></span>
                     </div>
                   </>
                 );
               })()}
             </div>
 
-            {/* 학기별 성적 - alert 블럭 (임시, 하드코딩) */}
-            <div className="px-4.5 py-2 border-b border-(--border) bg-(--accent-bg)
-                            flex items-center gap-2 text-[11px] text-(--text-2)">
-              <Clock size={12} className="text-(--accent) shrink-0" />
-              <span> <b className="text-(--text-1)">자료구조 A+, 알고리즘 A0
-                    </b> 이상이면 이번 학기 목표 GPA {targetGpa.toFixed(1)} 달성 가능. </span>
-              <span className="ml-auto px-1.5 py-0.5 rounded-full text-[8px] font-semibold
-                              bg-(--accent-bg) text-(--accent)
-                               whitespace-nowrap shrink-0">달성 가능 ✓</span>
-            </div>
+            {/* 목표 GPA 달성 힌트 (동적 계산) */}
+            {hintNeededGrade && hintNeededGrade !== 'impossible' && (
+              <div className="px-4.5 py-2 border-b border-(--border) bg-(--accent-bg)
+                              flex items-center gap-2 text-[11px] text-(--text-2)">
+                <Clock size={12} className="text-(--accent) shrink-0" />
+                {hintNeededGrade === 'already' ? (
+                  <span>{t('dashHintAlready')}</span>
+                ) : (
+                  <>
+                    <span>
+                      {t('dashHintAvg')}<b className="text-(--text-1)">{hintNeededGrade}</b>{t('dashHintOrAbove')}{targetGpa.toFixed(1)}{t('dashHintPossible')}
+                    </span>
+                    <span className="ml-auto px-1.5 py-0.5 rounded-full text-[8px] font-semibold
+                                    bg-(--accent-bg) text-(--accent) whitespace-nowrap shrink-0">
+                      {t('dashAchievable')} ✓
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
 
 
             {/* 학기 블럭 : API 데이터 */}
@@ -737,16 +816,16 @@ function Dashboard(
                     <div className="flex items-center gap-3.5">
                       {isCurrent ? (
                         <>
-                          <span className="w-14 text-[11px] font-bold text-(--accent)">{semLabel(sem)}</span>
+                          <span className="w-14 text-[11px] font-bold text-(--accent)">{semLabel(sem, t)}</span>
                           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold
-                                          bg-(--badge-neutral-bg) text-(--badge-neutral-text)">현재 학기</span>
+                                          bg-(--badge-neutral-bg) text-(--badge-neutral-text)">{t('dashCurrentSem')}</span>
                           <span className="text-[10px] text-(--text-3)">
-                            {sem.courses.length}과목 · {sumCredits(sem.courses)}학점 · 성적 발표 전
+                            {sem.courses.length}{t('dashSubjectUnit')} · {sumCredits(sem.courses)}{t('dashCreditsUnit')} · {t('dashPending')}
                           </span>
                         </>
                       ) : (
                         <>
-                          <span className="w-14 text-[11px] font-bold text-(--text-3)">{semLabel(sem)}</span>
+                          <span className="w-14 text-[11px] font-bold text-(--text-3)">{semLabel(sem, t)}</span>
                           <span className="text-lg font-bold tabular-nums text-(--text-1) leading-none"
                                 style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                             {sem.gpa?.toFixed(1)} {/* toFixed : 소수점 n자리까지 보여줌. */}
@@ -759,19 +838,19 @@ function Dashboard(
                     {/* 완료 학기만 교양/전공 GPA 표시 */}
                     {!isCurrent && (
                       <div className="flex items-center gap-3.5 text-[11px] text-(--text-2)">
-                        <span>교양 <b>{libGPA}</b></span>
-                        <span>전공 <b>{majorGPA}</b></span>
+                        <span>{t('dashLiberal')} <b>{libGPA}</b></span>
+                        <span>{t('dashMajor')} <b>{majorGPA}</b></span>
                       </div>
                     )}
 
                     <div className="flex items-center gap-2">
                       {/* 학기 삭제 버튼 */}
                       <button
-                        onClick={e => { e.stopPropagation(); deleteSemester(sem.id, semLabel(sem)); }}
+                        onClick={e => { e.stopPropagation(); deleteSemester(sem.id, semLabel(sem, t)); }}
                         className="text-[10px] text-(--text-3) hover:text-red-400
                                    transition-colors px-1.5 py-0.5 rounded border
                                    border-(--border) hover:border-red-300">
-                        삭제
+                        {t('delete')}
                       </button>
                       <svg
                         className={`w-3 h-3 text-(--text-3) transition-transform
@@ -789,7 +868,7 @@ function Dashboard(
                       {isCurrent ? (
                         // 현재 학기 — 성적 입력 UI
                         <div className="px-4 pb-3">
-                          <p className="text-[10px] text-(--text-3) font-semibold mb-1.5 mt-2">과목별 성적 입력</p>
+                          <p className="text-[10px] text-(--text-3) font-semibold mb-1.5 mt-2">{t('dashGradeInput')}</p>
                           <div className="flex flex-col gap-1">
                             {semCourses.map((c: any) => (
                               editCourseId === c.id ? (
@@ -808,7 +887,7 @@ function Dashboard(
                                       onChange={e => setEditCourseData(prev => ({ ...prev, category: e.target.value }))}
                                       className="px-1 py-0.5 text-[10px] rounded bg-(--surface) border border-(--border)
                                                  text-(--text-1) focus:outline-none cursor-pointer">
-                                      {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                                      {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o} value={o}>{catLabel[o]}</option>)}
                                     </select>
                                     <input
                                       value={editCourseData.credit}
@@ -827,10 +906,10 @@ function Dashboard(
                                   <div className="flex gap-1 justify-end">
                                     <button onClick={() => setEditCourseId(null)}
                                             className="text-[9px] px-2 py-0.5 rounded border border-(--border)
-                                                       text-(--text-3) hover:bg-(--surface-2) transition-colors">취소</button>
+                                                       text-(--text-3) hover:bg-(--surface-2) transition-colors">{t('cancel')}</button>
                                     <button onClick={() => saveCourseEdit(sem.id, c.id)}
                                             className="text-[9px] px-2 py-0.5 rounded bg-(--text-1) text-(--surface)
-                                                       hover:opacity-85 transition-opacity font-semibold">저장</button>
+                                                       hover:opacity-85 transition-opacity font-semibold">{t('save')}</button>
                                   </div>
                                 </div>
                               ) : (
@@ -866,7 +945,7 @@ function Dashboard(
                                     }}
                                     className="text-[9px] text-(--text-3) hover:text-(--text-1)
                                                opacity-0 group-hover:opacity-100 transition-opacity">
-                                    수정
+                                    {t('edit')}
                                   </button>
 
                                 </div>
@@ -878,7 +957,7 @@ function Dashboard(
                           <div className="mt-2 px-2.5 py-2 bg-(--accent-bg) rounded-lg
                                           border border-(--badge-neutral-bg)">
                             <div className="flex justify-between items-center">
-                              <span className="text-[11px] text-(--text-2)">이번학기 예상</span>
+                              <span className="text-[11px] text-(--text-2)">{t('dashProjected')}</span>
                               <div className="flex items-baseline gap-0.5">
                                 <span className="text-[17px] font-bold text-(--accent) tabular-nums"
                                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
@@ -891,9 +970,9 @@ function Dashboard(
                             {isCurrent && expectedTotalGpa !== null && (
                               <div className="border-t border-(--badge-neutral-bg) mt-1.5 pt-1.5
                                               flex gap-3.5 text-[11px] text-(--text-3)">
-                                <span>전체 <b className="text-(--text-1) tabular-nums">{expectedTotalGpa.toFixed(2)}</b></span>
-                                <span>전공 <b className="text-(--text-1) tabular-nums">{expectedMajorGpa?.toFixed(2) ?? '-'}</b></span>
-                                <span>교양 <b className="text-(--text-1) tabular-nums">{expectedLiberalGpa?.toFixed(2) ?? '-'}</b></span>
+                                <span>{t('dashAll')} <b className="text-(--text-1) tabular-nums">{expectedTotalGpa.toFixed(2)}</b></span>
+                                <span>{t('dashMajor')} <b className="text-(--text-1) tabular-nums">{expectedMajorGpa?.toFixed(2) ?? '-'}</b></span>
+                                <span>{t('dashLiberal')} <b className="text-(--text-1) tabular-nums">{expectedLiberalGpa?.toFixed(2) ?? '-'}</b></span>
                               </div>
                             )}
                           </div>
@@ -904,19 +983,19 @@ function Dashboard(
                               onClick={() => completeSemester(sem.id, semCourses)}
                               className="w-full mt-2 py-2 rounded-lg text-[12px] font-semibold
                                          bg-(--accent) text-white hover:opacity-85 transition-opacity">
-                              이번 학기 완료 처리
+                              {t('dashCompleteSem')}
                             </button>
                           )}
                         </div>
                       ) : semCourses.length > 0 ? (
                         // 현재 학기가 아니지만, 데이터 있으면 :
                         <div className="grid grid-cols-2 gap-2 px-4 pb-3">
-                          {['전공', '교양'].map(div => {
+                          {[{ div: '전공', label: t('dashMajor') }, { div: '교양', label: t('dashLiberal') }].map(({ div, label }) => {
                             const divCourses = semCourses.filter((c: any) => c.division === div);
                             return divCourses.length > 0 ? (
                               <div key={div} className="bg-(--inner-bg) rounded-lg p-2.5">
                                 <p className="text-[9px] font-bold text-(--text-3)
-                                              uppercase tracking-widest mb-1.5">{div}</p>
+                                              uppercase tracking-widest mb-1.5">{label}</p>
                                 <div className="flex flex-col gap-1 text-[11px]">
 
                                   {divCourses.map((c: any) => (
@@ -936,7 +1015,7 @@ function Dashboard(
                                             onChange={e => setEditCourseData(prev => ({ ...prev, category: e.target.value }))}
                                             className="px-0.5 py-0.5 text-[9px] rounded bg-(--surface) border border-(--border)
                                                        text-(--text-1) focus:outline-none cursor-pointer">
-                                            {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                                            {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o} value={o}>{catLabel[o]}</option>)}
                                           </select>
                                           <input
                                             value={editCourseData.credit}
@@ -955,10 +1034,10 @@ function Dashboard(
                                         <div className="flex gap-1 justify-end">
                                           <button onClick={() => setEditCourseId(null)}
                                                   className="text-[9px] px-1.5 py-0.5 rounded border border-(--border)
-                                                             text-(--text-3) hover:bg-(--surface-2) transition-colors">취소</button>
+                                                             text-(--text-3) hover:bg-(--surface-2) transition-colors">{t('cancel')}</button>
                                           <button onClick={() => saveCourseEdit(sem.id, c.id)}
                                                   className="text-[9px] px-1.5 py-0.5 rounded bg-(--text-1) text-(--surface)
-                                                             hover:opacity-85 transition-opacity font-semibold">저장</button>
+                                                             hover:opacity-85 transition-opacity font-semibold">{t('save')}</button>
                                         </div>
                                       </div>
                                     ) : (
@@ -973,7 +1052,7 @@ function Dashboard(
                                             }}
                                             className="text-[9px] text-(--text-3) hover:text-(--text-1)
                                                        opacity-0 group-hover:opacity-100 transition-opacity">
-                                            수정
+                                            {t('edit')}
                                           </button>
                                         </div>
                                       </div>
@@ -988,7 +1067,7 @@ function Dashboard(
                         <div className="mx-4 mb-3 bg-(--inner-bg) rounded-lg
                                         text-center text-[11px]
                                         text-(--text-3) py-2.5">
-                          강의 데이터 없음
+                          {t('dashNoCourses')}
                         </div>
                       )}
 
@@ -1002,7 +1081,7 @@ function Dashboard(
                               <input
                                 value={newCourse.name}
                                 onChange={e => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
-                                placeholder="과목명 입력"
+                                placeholder={t('dashCourseNamePh')}
                                 autoFocus
                                 className="px-2.5 py-1.5 text-[11px] rounded-lg bg-(--surface) border
                                            border-(--border) text-(--text-1) focus:outline-none
@@ -1015,7 +1094,7 @@ function Dashboard(
                                 onChange={e => setNewCourse(prev => ({ ...prev, category: e.target.value }))}
                                 className="px-2 py-1 text-[11px] rounded-lg bg-(--surface) border
                                            border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
-                                {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                                {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o} value={o}>{catLabel[o]}</option>)}
                               </select>
 
                               {/* 학점 */}
@@ -1050,7 +1129,7 @@ function Dashboard(
                               onClick={() => addCourseToSemester(sem.id)}
                               className="w-full py-1.5 rounded-lg text-[11px] font-semibold
                                          bg-(--text-1) text-(--surface) hover:opacity-80 transition-opacity">
-                              + 추가
+                              {t('add')}
                             </button>
                           </div>
                         ) : (
@@ -1063,7 +1142,7 @@ function Dashboard(
                             className="w-full py-1.5 rounded-lg border border-dashed border-(--border)
                                        text-[11px] text-(--text-3) hover:border-(--text-2)
                                        hover:text-(--text-2) transition-colors">
-                            + 과목 추가
+                            {t('addCourse')}
                           </button>
                         )}
                       </div>
@@ -1076,13 +1155,13 @@ function Dashboard(
             {/* 학기별 성적 - 하단 요약 */}
             <div className="px-4.5 py-3 bg-(--surface-2) flex items-center gap-2.5
                             text-[10px] text-(--text-3) whitespace-nowrap ">
-              <span>완료 <b className="text-(--text-2)">{chartSems.length}학기</b></span>
+              <span>{t('dashCompletedN')} <b className="text-(--text-2)">{chartSems.length}{t('dashSemUnit')}</b></span>
               <span>·</span>
-              <span>평균 GPA <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(2)}</b></span>
+              <span>{t('dashAvg')} GPA <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(2)}</b></span>
               <span>·</span>
-              <span>최고 <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b>
+              <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b>
                 <span className="text-[9px] ml-0.5">
-                  ({chartSems[gpaList.indexOf(maxGPA)] ? semLabel(chartSems[gpaList.indexOf(maxGPA)]) : '-'})
+                  ({chartSems[gpaList.indexOf(maxGPA)] ? semLabel(chartSems[gpaList.indexOf(maxGPA)], t) : '-'})
                 </span>
               </span>
             </div>
@@ -1100,19 +1179,19 @@ function Dashboard(
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <div className="px-3.5 py-3 border-b border-(--border)
                               flex justify-between items-center">
-                <span className="font-bold text-sm">목표 성적</span>
+                <span className="font-bold text-sm">{t('dashTargetGrades')}</span>
                 { /* 수정 버튼 @ */ }
                 <button
                   onClick={() => { setTargetInput(targetGpa.toFixed(2)); setEditTargetOpen(true); }}
                   className="text-[10px] font-medium text-(--text-2)
                                   border border-(--border) rounded-lg
                                   px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
-                  수정
+                  {t('edit')}
                 </button>
               </div>
               <div className="px-3.5 py-3">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-[11px] text-(--text-3)">목표 GPA</span>
+                  <span className="text-[11px] text-(--text-3)">{t('dashTargetGPA')}</span>
                   <span className="text-xl font-bold text-(--accent) tabular-nums"
                         style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif", letterSpacing: '-.02em' }}>
                     {targetGpa.toFixed(1)}
@@ -1120,8 +1199,8 @@ function Dashboard(
                 </div>
 
                 <div className="flex justify-between text-[10px] text-(--text-2) mb-1">
-                  <span>현재 <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
-                  <span>목표 <b className="text-(--accent) tabular-nums">{targetGpa.toFixed(1)}</b></span>
+                  <span>{t('dashCurrentShort')} <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
+                  <span>{t('dashTarget')} <b className="text-(--accent) tabular-nums">{targetGpa.toFixed(1)}</b></span>
                 </div>
 
                 <div className="h-3 rounded-full bg-(--bar-track) overflow-hidden">
@@ -1133,7 +1212,7 @@ function Dashboard(
               <div className="h-px bg-(--border)" />
 
               <div className="px-3.5 py-3">
-                <p className="text-[10px] text-(--text-3) mb-2">이번 학기 과목별 목표</p>
+                <p className="text-[10px] text-(--text-3) mb-2">{t('dashSemTargets')}</p>
 
                 {/* 목표 성적 블럭 @ - 현재학기 과목 기반 동적 입력 (하드코딩 제거) */}
                 {currentCourses.length > 0 ? (
@@ -1147,7 +1226,7 @@ function Dashboard(
                           className="text-[11px] bg-(--surface) border border-(--border)
                                      rounded px-1.5 py-0.5 shrink-0
                                      text-(--text-1) cursor-pointer focus:outline-none">
-                          <option value="">목표 미설정</option>
+                          <option value="">{t('dashNotSet')}</option>
                           {GRADES.map(g => <option key={g}>{g}</option>)}
                         </select>
                         {/* type : user가 직접 수정 가능하게 변경 — select로 대체 완료 */}
@@ -1156,7 +1235,7 @@ function Dashboard(
                   </div>
                 ) 
                 : (
-                  <p className="text-[11px] text-(--text-3) text-center py-2">수강 과목 없음</p>
+                  <p className="text-[11px] text-(--text-3) text-center py-2">{t('dashNoCourseList')}</p>
                 )}
                 
                 {/* 목표 성적 - 예상 결과 alert (목표 성적 설정 시 동적 계산) */}
@@ -1173,9 +1252,9 @@ function Dashboard(
                     <div className="mt-2.5 px-2.5 py-1.5 bg-(--accent-bg) rounded-lg flex items-center gap-1.5">
                       <CheckCircle2 size={12} className="text-(--accent) shrink-0" />
                       <span className="text-[10px] text-(--text-2)">
-                        목표대로 받으면 이번학기&nbsp;
+                        {t('dashGoalResult')}&nbsp;
                         <b className="text-(--accent)">{predicted.toFixed(2)}</b>
-                        &nbsp;{predicted >= targetGpa ? '→ 목표 달성 ✓' : '→ 목표 미달'}
+                        &nbsp;{predicted >= targetGpa ? t('dashGoalAchieved') : t('dashGoalMissed')}
                       </span>
                     </div>
                   );
@@ -1198,15 +1277,15 @@ function Dashboard(
               <div className="px-4 py-3 border-b border-(--border) flex
                               justify-between items-center">
                 <div>
-                  <span className="font-bold text-[13px]">이번 학기 수강</span>
+                  <span className="font-bold text-[13px]">{t('dashThisSemCourses')}</span>
                   <span className="text-[11px] text-(--text-3) ml-2">
-                    {currentSem ? semLabel(currentSem) : '-'}
+                    {currentSem ? semLabel(currentSem, t) : '-'}
                   </span>
                 </div>
 
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold
                                 bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                  {sumCredits(currentCourses)}학점
+                  {sumCredits(currentCourses)}{t('dashCreditsUnit')}
                 </span>
               </div>
 
@@ -1216,8 +1295,8 @@ function Dashboard(
                                 border-b border-(--border) mb-0.5"
                     style={{ gridTemplateColumns: '9px 1fr auto auto', gap: '6px 10px' }}>
                   <span/>
-                  <span>과목명</span> <span>구분</span>
-                  <span className="text-right">학점</span>
+                  <span>{t('dashCourseName')}</span> <span>{t('dashType')}</span>
+                  <span className="text-right">{t('dashCredits')}</span>
                 </div>
                 {currentCourses.map((c: any) => (
                   <div key={c.id}
@@ -1236,12 +1315,12 @@ function Dashboard(
                 <div className="px-4 py-2 border-t border-(--border)
                                 flex justify-between items-center mt-0.5">
                   <span className="text-[11px] text-(--text-3)">
-                      {currentCourses.length}과목
+                      {currentCourses.length} {t('dashSubjectUnit')}
                   </span>
 
                   <span className="text-[11px] font-bold text-(--text-1)">
-                    총 <span className="tabular-nums">
-                      {sumCredits(currentCourses)}</span>학점
+                    {t('dashTotalCredits')} <span className="tabular-nums">
+                      {sumCredits(currentCourses)}</span>{t('dashCreditsUnit')}
                   </span>
                 </div>
               </div>
@@ -1253,7 +1332,7 @@ function Dashboard(
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <div className="px-3.5 py-3 border-b border-(--border) flex
                             justify-between items-center shrink-0">
-                <span className="font-bold text-[13px]">시간표</span>
+                <span className="font-bold text-[13px]">{t('dashScheduleCard')}</span>
 
                 { /* 전체보기 버튼 @ */ }
                 <button
@@ -1261,13 +1340,13 @@ function Dashboard(
                   className="text-[10px] font-medium text-(--text-2)
                                   border border-(--border) rounded-lg
                                   px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
-                  전체보기
+                  {t('viewAll')}
                 </button>
               </div>
               <div className="p-3 flex flex-col flex-1 min-h-0">
                 <div className="grid grid-cols-5 gap-0.5 text-center text-[9px] font-bold
                                 text-(--text-3) mb-1 shrink-0">
-                  {['월','화','수','목','금'].map(d => <div key={d}>{d}</div>)}
+                  {[t('dashDayMon'),t('dashDayTue'),t('dashDayWed'),t('dashDayThu'),t('dashDayFri')].map(d => <div key={d}>{d}</div>)}
                 </div>
 
                 {/* 시간표 데이터 — Timetable API 연결
@@ -1278,7 +1357,7 @@ function Dashboard(
                   {dashBlocks.length === 0 && (
                     <div className="col-span-5 flex items-center justify-center
                                     text-[10px] text-(--text-3)">
-                      등록된 수업 없음
+                      {t('dashNoClasses')}
                     </div>
                   )}
                   {dashBlocks.map(b => (
@@ -1314,12 +1393,12 @@ function Dashboard(
         <div className="px-4.5 py-3 border-b border-(--border)
                         flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-[13px]">학점 이수 현황</span>
-            <span className="text-[11px] text-(--text-2)">총 이수</span>
+            <span className="font-bold text-[13px]">{t('dashCreditsStatus')}</span>
+            <span className="text-[11px] text-(--text-2)">{t('dashTotalEarned')}</span>
             <span className="text-xl font-bold tabular-nums text-(--text-1)"
                   style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif",
                            letterSpacing: '-.01em' }}>{earnedTotal}</span>
-            <span className="text-[11px] text-(--text-3)">/ {gradTotal || '-'} 학점</span>
+            <span className="text-[11px] text-(--text-3)">/ {gradTotal || '-'} {t('dashCreditsUnit')}</span>
             <div className="w-20 h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
               <div className="h-full rounded-full bg-(--bar)"
                    style={{ width: gradPct + '%' }}/>
@@ -1335,37 +1414,37 @@ function Dashboard(
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-(--text-1) inline-block"/>
-                <span className="text-[12px] font-bold">전공학점</span>
+                <span className="text-[12px] font-bold">{t('dashMajorCredits')}</span>
                 <span className="text-lg font-bold tabular-nums text-(--text-1)"
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                   {majorEarned}
                 </span>
-                <span className="text-[10px] text-(--text-3)">/ {majorReqTotal || '-'} 학점</span>
+                <span className="text-[10px] text-(--text-3)">/ {majorReqTotal || '-'} {t('dashCreditsUnit')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold
                                bg-(--warn-bg) text-(--warn-text) border border-(--border)">
-                {majorReqTotal ? (majorReqTotal - majorEarned) + '학점 잔여' : '졸업요건 미설정'}
+                {majorReqTotal ? (majorReqTotal - majorEarned) + t('dashRemainSuffix') : t('dashNoGradReq')}
               </span>
             </div>
 
             {/* ##1-1, ##1-2 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               {[
-                { label: '전공선택', earned: majorSelEarned, required: majorReqSel || 54 },
-                { label: '전공필수', earned: majorFilEarned, required: majorReqFil || 31 },
+                { key: '전공선택', label: t('catElectMajor'), earned: majorSelEarned, required: majorReqSel || 54 },
+                { key: '전공필수', label: t('catReqMajor'),   earned: majorFilEarned, required: majorReqFil || 31 },
               ].map(row => (
-                <div key={row.label}>
+                <div key={row.key}>
                   <div className="flex justify-between text-[10px]
                                   text-(--text-2) mb-1.5">
                     <span>{row.label}</span>
-                    <span>{row.earned}/{row.required} 학점</span>
+                    <span>{row.earned}/{row.required} {t('dashCreditsUnit')}</span>
                   </div>
                   <div className="h-6 rounded-full bg-(--bar-track) overflow-hidden">
                     <div className="h-full rounded-full bg-(--bar)"
                          style={{ width: row.required > 0 ? Math.min(100, Math.round(row.earned / row.required * 100)) + '%' : '0%' }}/>
                   </div>
                   <p className="text-[9px] text-(--text-3) mt-1">
-                    잔여 {Math.max(0, row.required - row.earned)}학점
+                    {Math.max(0, row.required - row.earned)}{t('dashRemainSuffix')}
                   </p>
                 </div>
               ))}
@@ -1379,17 +1458,17 @@ function Dashboard(
 
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-(--text-2) inline-block"/>
-                <span className="text-[12px] font-bold">교양학점</span>
+                <span className="text-[12px] font-bold">{t('dashLiberalCr')}</span>
                 <span className="text-lg font-bold tabular-nums text-(--text-1)"
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                       &nbsp; {liberalEarned}
                 </span>
-                <span className="text-[10px] text-(--text-3)">/ {liberalReqTotal} 학점</span>
+                <span className="text-[10px] text-(--text-3)">/ {liberalReqTotal} {t('dashCreditsUnit')}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold
                                bg-(--badge-neutral-bg) text-(--badge-neutral-text)
                                border border-(--border)">
-                {Math.max(0, liberalReqTotal - liberalEarned)}학점 잔여
+                {Math.max(0, liberalReqTotal - liberalEarned)}{t('dashRemainSuffix')}
               </span>
 
             </div>
@@ -1399,9 +1478,9 @@ function Dashboard(
               <div className="grid text-[10px] font-semibold text-(--text-3)
                               px-3.5 py-2 bg-(--surface-2)"
                    style={{ gridTemplateColumns: '1fr 56px 64px' }}>
-                <span>영역</span>
-                <span className="text-right">이수</span>
-                <span className="text-center">상태</span>
+                <span>{t('dashArea')}</span>
+                <span className="text-right">{t('dashEarned')}</span>
+                <span className="text-center">{t('dashStatus')}</span>
               </div>
 
               {Object.entries(liberalAreaMap).map(([area, earned]) => (
@@ -1416,7 +1495,7 @@ function Dashboard(
                   <span className="text-center">
                     <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
                                      bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                      {earned}학점
+                      {earned}{t('dashCreditsUnit')}
                     </span>
                   </span>
                 </div>
@@ -1424,7 +1503,7 @@ function Dashboard(
 
               {Object.keys(liberalAreaMap).length === 0 && (
                 <div className="px-3.5 py-3 text-center text-[11px] text-(--text-3)">
-                  데이터 없음
+                  {t('noData')}
                 </div>
               )}
             </div>
@@ -1445,7 +1524,7 @@ function Dashboard(
     {/* == 학기 추가 팝업 == */}
     <Popup open={addSemOpen} onClose={() => setAddSemOpen(false)} width="460px">
       <PopupHeader
-        title={<><Calendar size={14} className="text-(--accent)"/> 학기 추가</>}
+        title={<><Calendar size={14} className="text-(--accent)"/> {t('dashAddSem')}</>}
         onClose={() => setAddSemOpen(false)}
       />
 
@@ -1453,7 +1532,7 @@ function Dashboard(
         {/* 학기 입력 — 연도 숫자 입력 + 학기 구분 select */}
         <div>
           <p className="block text-[11px] font-semibold text-(--text-2) mb-1.5">
-            학기 <span className="font-normal text-(--text-3)">(예: 2025년 1학기)</span>
+            {t('dashSemGrades')} <span className="font-normal text-(--text-3)">(e.g. 2025 {t('dashSem1')})</span>
           </p>
 
           <div className="flex gap-2 items-center">
@@ -1468,16 +1547,16 @@ function Dashboard(
                          bg-(--surface) border border-(--border) text-(--text-1)
                          focus:outline-none focus:border-(--text-2) transition-colors"
             />
-            <span className="text-[12px] text-(--text-3)">년</span>
+            <span className="text-[12px] text-(--text-3)">{t('dashYearUnit')}</span>
             <select
               value={newSemTerm}
               onChange={e => setNewSemTerm(e.target.value as '1'|'2'|'summer'|'winter')}
               className="px-3 py-1.5 text-[13px] rounded-lg bg-(--surface) border
                          border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
-              <option value="1">1학기</option>
-              <option value="2">2학기</option>
-              <option value="summer">하계</option>
-              <option value="winter">동계</option>
+              <option value="1">{t('dashSem1')}</option>
+              <option value="2">{t('dashSem2')}</option>
+              <option value="summer">{t('dashSummer')}</option>
+              <option value="winter">{t('dashWinter')}</option>
             </select>
           </div>
 
@@ -1486,7 +1565,7 @@ function Dashboard(
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-[11px] font-semibold text-(--text-2)">
-              수강 과목 <span className="font-normal text-(--text-3)">(선택)</span>
+              {t('dashCoursesHeader')} <span className="font-normal text-(--text-3)">({t('dashOptional')})</span>
             </label>
 
             {/* 과목 추가 버튼 */}
@@ -1497,13 +1576,13 @@ function Dashboard(
               className="flex items-center gap-1 text-[10px] font-medium text-(--text-2)
                          border border-(--border) rounded-lg px-2 py-0.5
                          hover:bg-(--surface-2) transition-colors">
-              + 과목 추가
+              {t('addCourse')}
             </button>
           </div>
 
           <div className="grid text-[10px] text-(--text-3) px-0.5 mb-1"
                style={{ gridTemplateColumns: '1fr 96px 48px 60px 22px', gap: '0 5px' }}>
-            <span>과목명</span><span>구분</span><span className="text-center">학점</span><span className="text-center">성적</span><span/>
+            <span>{t('dashCourseName')}</span><span>{t('dashType')}</span><span className="text-center">{t('dashCredits')}</span><span className="text-center">{t('dashGrade')}</span><span/>
           </div>
 
           {/* 인풋 필드 @ */}
@@ -1518,7 +1597,7 @@ function Dashboard(
                   onChange={e => setNewSemCourses(newSemCourses.map((x, j) => j === i
                     ? { ...x, name: e.target.value }
                     : x ))}
-                  placeholder="과목명"
+                  placeholder={t('dashCourseName')}
                   className="px-2 py-1 text-[11px] rounded-lg
                              bg-(--surface) border border-(--border)
                              text-(--text-1) focus:outline-none
@@ -1533,7 +1612,7 @@ function Dashboard(
                     : x ))}
                   className="px-2 py-1 text-[11px] rounded-lg bg-(--surface) border
                              border-(--border) text-(--text-1) focus:outline-none cursor-pointer">
-                  {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o}>{o}</option>)}
+                  {['전공필수','전공선택','교양필수','교양선택'].map(o => <option key={o} value={o}>{catLabel[o]}</option>)}
                 </select> {/* 연결 해야함 @ (아마도 key === field 로 매핑해서 추가할듯.) */}
 
                 {/* 학점 */}
@@ -1573,7 +1652,7 @@ function Dashboard(
 
             {newSemCourses.length === 0 && (
               <p className="text-[11px] text-(--text-3) text-center py-3">
-                과목을 추가하면 학기 내역에 표시됩니다.
+                {t('dashAddCourseHint')}
               </p>
             )}
 
@@ -1587,7 +1666,7 @@ function Dashboard(
                 className="px-4 py-1.5 rounded-lg text-[12px]
                            border border-(--border)
                            text-(--text-2) hover:bg-(--surface-2) transition-colors">
-          취소
+          {t('cancel')}
         </button>
 
         <button
@@ -1595,18 +1674,18 @@ function Dashboard(
           className="px-4 py-1.5 rounded-lg text-[12px] font-semibold
                      bg-(--text-1) text-(--surface)
                      hover:opacity-85 transition-opacity">
-          저장
+          {t('save')}
         </button>
       </PopupFooter>
     </Popup>
 
     {/* == 목표 GPA 수정 팝업 == */}
     <Popup open={editTargetOpen} onClose={() => setEditTargetOpen(false)} width="320px">
-      <PopupHeader title="목표 GPA 수정" onClose={() => setEditTargetOpen(false)} />
+      <PopupHeader title={t('dashEditTargetGPA')} onClose={() => setEditTargetOpen(false)} />
 
       <div className="px-4.5 py-4">
         <label className="block text-[11px] font-semibold text-(--text-2) mb-1.5">
-          목표 GPA
+          {t('dashTargetGPA')}
         </label>
         <input
           type="number"
@@ -1620,7 +1699,7 @@ function Dashboard(
                      focus:outline-none focus:border-(--text-2) transition-colors"
         />
         <p className="text-[10px] text-(--text-3) mt-1">
-          0.00 ~ 4.50 범위 내로 입력해주세요.</p>
+          {t('dashGPARange')}</p>
       </div>
 
       <PopupFooter>
@@ -1628,14 +1707,14 @@ function Dashboard(
                 className="px-4 py-1.5 rounded-lg text-[12px]
                            border border-(--border)
                            text-(--text-2) hover:bg-(--surface-2) transition-colors">
-          취소
+          {t('cancel')}
         </button>
         <button
           onClick={saveTargetGpa}
           className="px-4 py-1.5 rounded-lg text-[12px] font-semibold
                      bg-(--text-1) text-(--surface)
                      hover:opacity-85 transition-opacity">
-          저장
+          {t('save')}
         </button>
       </PopupFooter>
     </Popup>

@@ -32,10 +32,17 @@ export const POST_TAG: Record<string, string> = {
 // #### 함수 LIST 
 
 // 학기로 다듬기 : "2024-1", "2025-하계" 형식..
-export function semLabel(sem: any): string {
-  const t = sem.term === '1' ? '1' : sem.term === '2' ? '2'
-    : sem.term === 'summer' ? '하계' : '동계';
-  return `${sem.semester_year}-${t}`;
+// t 함수 전달 시 하계/동계도 번역
+export function semLabel(sem: any, t?: (key: string) => string): string {
+  let term: string;
+  if (sem.term === '1' || sem.term === '2') {
+    term = sem.term;
+  } else if (sem.term === 'summer') {
+    term = t ? t('dashSummer') : '하계';
+  } else {
+    term = t ? t('dashWinter') : '동계';
+  }
+  return `${sem.semester_year}-${term}`;
 }
 
 // SVG 차트 y 좌표 (viewBox y: 8~78, GPA: 3.5~4.5) #svg 차트 : ai도움 비중 큼
@@ -70,13 +77,13 @@ export function dotColor(cat: string) {
   return 'bg-(--timetable-g-bd)';
 }
 
-// ISO 날짜 => N분/시간/일 전
-export function timeAgo(iso: string) {
+// ISO 날짜 => N분/시간/일 전 (t 전달 시 번역)
+export function timeAgo(iso: string, t?: (key: string) => string) {
   const diff = Date.now() - new Date(iso).getTime();
   const h = Math.floor(diff / 3600000);
-  if (h < 1) return `${Math.floor(diff / 60000)}분 전`;
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
+  if (h < 1) return `${Math.floor(diff / 60000)}${t ? t('timeMinAgo') : '분 전'}`;
+  if (h < 24) return `${h}${t ? t('timeHourAgo') : '시간 전'}`;
+  return `${Math.floor(h / 24)}${t ? t('timeDayAgo') : '일 전'}`;
 }
 
 // 성적 문자 (A,B..) => 점수

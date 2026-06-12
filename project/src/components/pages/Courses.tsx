@@ -4,36 +4,38 @@ import { LayoutGrid, StickyNote, ListChecks, GripVertical,
 import Popup, { PopupHeader } from '../ui/Popup';
 import { useGradeData }    from '../../hooks/useGradeData';
 import { useCoursesData }  from '../../hooks/useCoursesData';
-import type { PlanItem }   from '../../hooks/useCoursesData';
+import { useLang } from '../../LangContext';
 
 // 전공: 전공필수/전공선택
 // 교양: 교양필수(개신기초교양+자연이공계기초과학+확대교양) / 교양선택(일반교양) 두 그룹으로 집계
 const MAJOR_CATEGORIES = [
-  { label: '전공필수', color: 'var(--accent)'             },
-  { label: '전공선택', color: 'var(--badge-neutral-text)' },
+  { label: '전공필수', color: 'var(--timetable-b-bd)' },
+  { label: '전공선택', color: 'var(--timetable-p-bd)' },
 ];
 
 const LIBERAL_AREA_MAP: Record<string, { label: string; color: string }> = {
 
-  '개신기초교양':       { label: '교양필수', color: 'var(--rec-neutral-text)' },
-  '자연이공계기초과학':  { label: '교양필수', color: 'var(--rec-neutral-text)' },
-  '확대교양':           { label: '교양필수', color: 'var(--rec-neutral-text)' },
- 
-  '일반교양':           { label: '교양선택', color: 'var(--amber, #d97706)'   },
- 
-  '개신기초': { label: '교양필수', color: 'var(--rec-neutral-text)' },
-  '자연':     { label: '교양필수', color: 'var(--rec-neutral-text)' },
-  '확대':     { label: '교양필수', color: 'var(--rec-neutral-text)' },
-  '일반':     { label: '교양선택', color: 'var(--amber, #d97706)'   },
+  '개신기초교양':       { label: '교양필수', color: 'var(--timetable-g-bd)' },
+  '자연이공계기초과학':  { label: '교양필수', color: 'var(--timetable-g-bd)' },
+  '확대교양':           { label: '교양필수', color: 'var(--timetable-g-bd)' },
+
+  '일반교양':           { label: '교양선택', color: 'var(--timetable-c-bd)' },
+
+  '개신기초': { label: '교양필수', color: 'var(--timetable-g-bd)' },
+  '자연':     { label: '교양필수', color: 'var(--timetable-g-bd)' },
+  '확대':     { label: '교양필수', color: 'var(--timetable-g-bd)' },
+  '일반':     { label: '교양선택', color: 'var(--timetable-c-bd)' },
 };
 
 function Courses() {
+
+  const { t } = useLang();
 
   const { semesters, courses: doneCourses, gradReqs, loading: gradeLoading }
     = useGradeData();
 
   const {
-    currentSemester, planItems, meta,
+    planItems, meta,
     loading: planLoading, error,
     addPlanItem, deletePlanItem, toggleEnroll,
     reorderItems, saveMemo, uploadImage,
@@ -41,9 +43,16 @@ function Courses() {
 
   const loading = gradeLoading || planLoading;
 
-  const semLabel = currentSemester
-    ? `${currentSemester.semester_year}-${currentSemester.term}`
-    : '–';
+  // 오늘 날짜 기준으로 다음 수강신청 예정 학기 계산
+  // 3~8월(1학기+여름방학): 2학기 준비 / 9~12월(2학기): 내년 1학기 / 1~2월(겨울방학): 올해 1학기
+  const semLabel = (() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    if (m >= 3 && m <= 8)  return `${y}-2`;
+    if (m >= 9 && m <= 12) return `${y + 1}-1`;
+    return `${y}-1`;
+  })();
 
   const [dragIndex, setDragIndex] = useState(-1);
   const [overIndex, setOverIndex] = useState(-1);
@@ -163,10 +172,16 @@ function Courses() {
   const totalCurrentPie = creditStats.reduce((s, d) => s + d.current,  0) || 1;
   const totalAfterPie   = creditStats.reduce((s, d) => s + d.afterCr,  0) || 1;
 
+  // DB key → 번역 표시 레이블 (게이지바·파이차트 범례용)
+  const catLabel: Record<string, string> = {
+    '전공필수': t('catReqMajor'), '전공선택': t('catElectMajor'),
+    '교양필수': t('catReqLib'),   '교양선택': t('catElectLib'),
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center text-(--text-3) text-[13px]">
-        불러오는 중...
+        {t('loading')}
       </div>
     );
   }
@@ -179,11 +194,11 @@ function Courses() {
       <div className="flex items-center justify-between mb-3">
         <p className="text-[16px] font-extrabold text-(--text-1)"
            style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-          수강신청 계획
+          {t('coursesTitle')}
         </p>
         <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold
                          bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-          이번 학기 {semLabel}
+          {t('coursesCurrSemPrefix')}{semLabel}
         </span>
       </div>
 
@@ -201,10 +216,7 @@ function Courses() {
                         border-(--border) overflow-hidden flex flex-col">
           <div className="px-3.5 py-2 border-b border-(--border) flex items-center justify-between">
             <span className="font-bold text-[13px] flex items-center gap-1.5">
-              <LayoutGrid size={14} className="text-(--accent)" /> 표준이수모형
-            </span>
-            <span className="text-[11px] text-(--accent) font-semibold">
-              소프트웨어학부 {semLabel}
+              <LayoutGrid size={14} className="text-(--accent)" /> {t('coursesCurriculum')}
             </span>
           </div>
 
@@ -227,7 +239,7 @@ function Courses() {
               <div className="relative w-full h-full group">
                 <img
                   src={`http://localhost:3000${meta.image_path}`}
-                  alt="표준이수모형"
+                  alt={t('coursesCurriculum')}
                   className="w-full h-full object-contain rounded-lg"
                 />
                 {/* 호버 시 재업로드 버튼 */}
@@ -237,7 +249,7 @@ function Courses() {
                              rounded-lg opacity-0 group-hover:opacity-100 transition-opacity
                              bg-black/40 text-white text-[11px] gap-1">
                   <Upload size={20}/>
-                  이미지 교체
+                  {t('coursesChangeImg')}
                 </button>
               </div>
             ) : (
@@ -259,8 +271,8 @@ function Courses() {
                     ? 'border-(--accent) bg-(--accent-bg)'
                     : 'border-(--border) bg-(--inner-bg) hover:border-(--accent)'}`}>
                 <LayoutGrid size={28} className="text-(--text-3)" strokeWidth={1.5} />
-                <p className="text-[11px] text-(--text-3)">이수모형 이미지</p>
-                <p className="text-[10px] text-(--text-3)">클릭하거나 파일을 드래그하세요</p>
+                <p className="text-[11px] text-(--text-3)">{t('coursesCurrImg')}</p>
+                <p className="text-[10px] text-(--text-3)">{t('coursesDragDrop')}</p>
               </div>
             )}
           </div>
@@ -275,13 +287,13 @@ function Courses() {
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-4 py-3 border-b border-(--border)">
               <span className="font-bold text-[12px] flex items-center gap-1.5">
-                <StickyNote size={13} className="text-(--accent)" /> 수강신청 계획
+                <StickyNote size={13} className="text-(--accent)" /> {t('coursesTitle')}
               </span>
             </div>
             <textarea
               value={meta.memo}
               onChange={e => saveMemo(e.target.value)}
-              placeholder="수강신청 계획을 세워보세요..."
+              placeholder={t('coursesTitle') + '...'}
               className="flex-1 min-h-10 px-3 py-2 text-[11px] resize-none bg-(--surface)
                          border-none text-(--text-2) placeholder:text-(--text-3)
                          focus:outline-none leading-relaxed"
@@ -294,20 +306,20 @@ function Courses() {
             <div className="px-4 py-3 border-b border-(--border)
                             flex items-center justify-between">
               <span className="font-bold text-[13px] flex items-center gap-1.5">
-                <ListChecks size={14} className="text-(--accent)" /> 이번 학기 수강신청 목록
+                <ListChecks size={14} className="text-(--accent)" /> {t('coursesSemList')}
               </span>
               <button
                 onClick={() => setShowAddForm(true)}
                 className="text-[10px] font-semibold px-2.5 py-1 rounded-lg
                            bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-                + 추가
+                {t('add')}
               </button>
             </div>
 
             <div className="p-2.5 flex flex-col gap-0.5">
               {planItems.length === 0 && (
                 <p className="text-[11px] text-(--text-3) text-center py-4">
-                  과목을 추가해보세요
+                  {t('coursesEmpty')}
                 </p>
               )}
 
@@ -332,11 +344,11 @@ function Courses() {
                   <div>
                     <p className="text-[12px] font-semibold text-(--text-1)">{c.name}</p>
                     <p className="text-[10px] text-(--text-3) mt-0.5">
-                      {c.category}{c.professor ? ` · ${c.professor}` : ''}
+                      {catLabel[c.category] ?? c.category}{c.professor ? ` · ${c.professor}` : ''}
                     </p>
                   </div>
                   <span className="text-[10px] text-(--text-2) whitespace-nowrap">
-                    {c.credit}학점
+                    {c.credit}{t('coursesCrUnit')}
                   </span>
                   <button
                     onClick={() => toggleEnroll(c.id, c.is_enrolled)}
@@ -345,7 +357,7 @@ function Courses() {
                       ${c.is_enrolled
                         ? 'bg-(--accent) text-(--surface)'
                         : 'border border-(--border) text-(--text-2) hover:bg-(--surface-2)'}`}>
-                    {c.is_enrolled ? '담김' : '담기'}
+                    {c.is_enrolled ? t('coursesEnrolled') : t('coursesAddToCart')}
                   </button>
                   <button
                     onClick={() => deletePlanItem(c.id)}
@@ -358,10 +370,10 @@ function Courses() {
 
               {/* footer */}
               <div className="border-t border-(--border) pt-2 mt-1 flex justify-between items-center">
-                <span className="text-[11px] text-(--text-2)">학점계</span>
-                <b className="text-[13px] text-(--text-1)">{totalCredit} 학점</b>
+                <span className="text-[11px] text-(--text-2)">{t('coursesTotal')}</span>
+                <b className="text-[13px] text-(--text-1)">{totalCredit}{t('coursesCrUnit')}</b>
                 <span className="text-[11px] text-(--text-3)">
-                  총 {earnedTotal + totalCredit}학점 예정
+                  {earnedTotal + totalCredit} {t('coursesCrPlanned')}
                 </span>
               </div>
             </div>
@@ -373,7 +385,7 @@ function Courses() {
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-3.5 py-2 border-b border-(--border)">
               <span className="font-bold text-[13px] flex items-center gap-1.5">
-                <BarChart2 size={14} className="text-(--accent)" /> 수강 후 학점
+                <BarChart2 size={14} className="text-(--accent)" /> {t('coursesAfterCr')}
               </span>
             </div>
 
@@ -390,10 +402,10 @@ function Courses() {
                   return (
                     <div key={field.label}>
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[10px] text-(--text-3)">{field.label}</span>
+                        <span className="text-[10px] text-(--text-3)">{catLabel[field.label] ?? field.label}</span>
                         <div className="flex items-center gap-1 m-1">
                           <span className="text-[10px] font-semibold text-(--accent) tabular-nums">
-                            {field.afterCr}{field.required > 0 ? ` / ${field.required}` : '학점'}
+                            {field.afterCr}{field.required > 0 ? ` / ${field.required}` : t('coursesCrUnit')}
                             {field.addedCr > 0 && (
                               <span className="text-[9px] font-bold px-1 ml-1 py-0.5 rounded"
                                     style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>
@@ -418,7 +430,7 @@ function Courses() {
                   <div key={field.label} className="flex items-center gap-1.5">
                     <span className="w-1 h-1 rounded-full shrink-0"
                           style={{ background: field.color }}/>
-                    <span className="text-[8px] text-(--text-2)">{field.label}</span>
+                    <span className="text-[8px] text-(--text-2)">{catLabel[field.label] ?? field.label}</span>
                   </div>
                 ))}
               </div>
@@ -446,7 +458,7 @@ function Courses() {
                       });
                     })()}
                   </svg>
-                  <p className="text-[8px] text-(--text-3)">현재</p>
+                  <p className="text-[8px] text-(--text-3)">{t('coursesCurrent')}</p>
                 </div>
 
                 <ChevronRight size={9} className="text-(--text-3) shrink-0"/>
@@ -472,7 +484,7 @@ function Courses() {
                       });
                     })()}
                   </svg>
-                  <p className="text-[8px] text-(--text-3)">수강 후</p>
+                  <p className="text-[8px] text-(--text-3)">{t('coursesAfterEnroll')}</p>
                 </div>
               </div>
 
@@ -487,16 +499,16 @@ function Courses() {
     {/* 과목 추가 팝업 */}
     {showAddForm && (
       <Popup open={true} onClose={() => setShowAddForm(false)} width="420px">
-        <PopupHeader title="과목 추가" onClose={() => setShowAddForm(false)}/>
+        <PopupHeader title={t('coursesAddPopup')} onClose={() => setShowAddForm(false)}/>
         <div className="p-5 flex flex-col gap-3.5">
 
           <div>
-            <p className="text-[11px] font-bold text-(--text-2) mb-1.5">과목명 *</p>
+            <p className="text-[11px] font-bold text-(--text-2) mb-1.5">{t('coursesCourseName')}</p>
             <input
               value={newCourse.name}
               onChange={e => setNewCourse({ ...newCourse, name: e.target.value })}
               onKeyDown={e => { if (e.key === 'Enter') handleAddCourse(); }}
-              placeholder="예: 기초 컴퓨터 프로그래밍"
+              placeholder={t('coursesCourseNamePh')}
               className="w-full px-3 py-2 text-[12px] rounded-lg bg-(--surface)
                          border border-(--border) text-(--text-1) placeholder:text-(--text-3)
                          focus:outline-none focus:border-(--text-2) transition-colors"/>
@@ -504,20 +516,20 @@ function Courses() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[11px] font-bold text-(--text-2) mb-1.5">구분</p>
+              <p className="text-[11px] font-bold text-(--text-2) mb-1.5">{t('coursesCategory')}</p>
               <select
                 value={newCourse.category}
                 onChange={e => setNewCourse({ ...newCourse, category: e.target.value })}
                 className="w-full px-3 py-2 text-[12px] rounded-lg bg-(--surface)
                            border border-(--border) text-(--text-1) focus:outline-none
                            focus:border-(--text-2) cursor-pointer transition-colors">
-                {['전공필수','전공선택','교양필수','교양선택'].map(cat => (
-                  <option key={cat}>{cat}</option>
+                {(['전공필수','전공선택','교양필수','교양선택'] as const).map(cat => (
+                  <option key={cat} value={cat}>{catLabel[cat] ?? cat}</option>
                 ))}
               </select>
             </div>
             <div>
-              <p className="text-[11px] font-bold text-(--text-2) mb-1.5">학점</p>
+              <p className="text-[11px] font-bold text-(--text-2) mb-1.5">{t('coursesCreditsLabel')}</p>
               <select
                 value={newCourse.credit}
                 onChange={e => setNewCourse({ ...newCourse, credit: e.target.value })}
@@ -525,18 +537,18 @@ function Courses() {
                            border border-(--border) text-(--text-1) focus:outline-none
                            focus:border-(--text-2) cursor-pointer transition-colors">
                 {['1','2','3'].map(cr => (
-                  <option key={cr} value={cr}>{cr} 학점</option>
+                  <option key={cr} value={cr}>{cr}{t('coursesCrUnit')}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div>
-            <p className="text-[11px] font-bold text-(--text-2) mb-1.5">교수명</p>
+            <p className="text-[11px] font-bold text-(--text-2) mb-1.5">{t('coursesProf')}</p>
             <input
               value={newCourse.professor}
               onChange={e => setNewCourse({ ...newCourse, professor: e.target.value })}
-              placeholder="예: 홍길동"
+              placeholder={t('coursesProfPh')}
               className="w-full px-3 py-2 text-[12px] rounded-lg bg-(--surface)
                          border border-(--border) text-(--text-1) placeholder:text-(--text-3)
                          focus:outline-none focus:border-(--text-2) transition-colors"/>
@@ -547,13 +559,13 @@ function Courses() {
               onClick={handleAddCourse}
               className="flex-1 py-2.5 rounded-lg text-[12px] font-bold
                          bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-              추가하기
+              {t('coursesAddAction')}
             </button>
             <button
               onClick={() => setShowAddForm(false)}
               className="px-5 py-2.5 rounded-lg text-[12px] border border-(--border)
                          text-(--text-2) hover:bg-(--surface-2) transition-colors">
-              취소
+              {t('cancel')}
             </button>
           </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGradeData } from '../../../hooks/useGradeData';
+import { useLang } from '../../../LangContext';
 
 
 // graduation_status 항목 타입 (졸업 요건 현황 — 유저 직접 추가로 한정.)
@@ -13,6 +14,7 @@ interface CertItem {
 
 function Credits() {
   const { courses, gradReqs, loading, error } = useGradeData();
+  const { t } = useLang();
 
   // 졸업 요건 현황 (graduation_status 테이블)
   const [certItems, setCertItems]     = useState<CertItem[]>([]);
@@ -100,7 +102,7 @@ function Credits() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-(--text-3) text-sm">
-        불러오는 중...
+        {t('loading')}
       </div>
     );
   }
@@ -149,6 +151,17 @@ function Credits() {
   // 미완료 항목 수 (note !== 'done')
   const incompleteCerts = certItems.filter(c => c.note !== 'done').length;
 
+  // alert용 잔여학점 항목 — gradReqs 전체에서 동적으로 계산 (총졸업 제외)
+  const alertItems = gradReqs
+    .filter(r => r.area !== '총졸업' && r.required > 0)
+    .map(r => {
+      let earned = 0;
+      if (r.area === '전공필수')      earned = majorMustEarned;
+      else if (r.area === '전공선택') earned = majorElecEarned;
+      else earned = doneCourses.filter(c => c.area === r.area).reduce((s, c) => s + c.credit, 0);
+      return { area: r.area, remaining: Math.max(0, r.required - earned) };
+    })
+    .filter(r => r.remaining > 0);
 
   // 바 너비 계산
   function barW(earned: number, required: number) {
@@ -160,28 +173,34 @@ function Credits() {
     <>
     <div className="p-3.5 pb-15 w-full">
 
-      {/* alert */}
-      <div className="flex items-center justify-between flex-wrap gap-2 card-enter
-                      px-3.5 py-2.5 rounded-xl mb-3 text-xs"
-           style={{ background: 'var(--alert-warn-bg)',
-                    border: '1px solid var(--alert-border)',
-                    opacity: .9 }}>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-semibold" style={{ color: 'var(--alert-warn)' }}>
-            이수 잔여 항목
-          </span>
-          <span className="text-(--text-2)">
-            전공필수 {Math.max(0, majorMustReq - majorMustEarned)}학점
-            · 전공선택 {Math.max(0, majorElecReq - majorElecEarned)}학점
+      {/* alert — 잔여 항목 있을 때만 표시 */}
+      {alertItems.length > 0 && (
+        <div className="flex items-center justify-between flex-wrap gap-2 card-enter
+                        px-3.5 py-2.5 rounded-xl mb-3 text-xs"
+             style={{ background: 'var(--alert-warn-bg)',
+                      border: '1px solid var(--alert-border)',
+                      opacity: .9 }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[12px] font-semibold" style={{ color: 'var(--alert-warn)' }}>
+              {t('credRemaining')}
+            </span>
+            <span className="text-(--text-2)">
+              {alertItems.map((item, i) => (
+                <span key={item.area}>
+                  {i > 0 && ' · '}
+                  {item.area} {item.remaining}{t('credCrUnit')}
+                </span>
+              ))}
+            </span>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                style={{ background: 'var(--alert-warn-bg)',
+                         color: 'var(--alert-warn)',
+                         borderColor: 'var(--alert-warn)' }}>
+            {Math.max(0, gradTotal - earnedCr)}{t('credCrLeft')}
           </span>
         </div>
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border"
-              style={{ background: 'var(--alert-warn-bg)',
-                       color: 'var(--alert-warn)',
-                       borderColor: 'var(--alert-warn)' }}>
-          총 {Math.max(0, gradTotal - earnedCr)}학점 잔여
-        </span>
-      </div>
+      )}
 
       {/* 상단 블럭 집합 */}
       <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 mb-4">
@@ -190,7 +209,7 @@ function Credits() {
         <div className="bg-(--surface) rounded-xl border border-(--border) p-5 
                         flex flex-col items-center card-enter stagger-1"
              style={{ boxShadow: 'var(--shadow-card)' }}>
-          <p className="text-[11px] font-semibold text-(--text-3) mb-3">졸업 달성률</p>
+          <p className="text-[11px] font-semibold text-(--text-3) mb-3">{t('credGradProgress')}</p>
           <svg viewBox="0 0 110 110" style={{ width: 110 }}>
             <circle cx="55" cy="55" r={r} fill="none" stroke="var(--bar-track)" strokeWidth="10"/>
             <circle cx="55" cy="55" r={r} fill="none" stroke="var(--bar)" strokeWidth="10"
@@ -205,14 +224,14 @@ function Credits() {
             </text>
             <text x="55" y="64" textAnchor="middle" fontSize={9}
                   fill="var(--text-3)" fontFamily="Inter">
-              {earnedCr} / {gradTotal}학점
+              {earnedCr} / {gradTotal}{t('credCrUnit')}
             </text>
           </svg>
 
           <div className="mt-3.5 w-full flex flex-col gap-2">
             <div className="flex justify-between text-[11px]">
-              <span className="text-(--text-3)">이수</span>
-              <b className="tabular-nums text-(--text-1)">{earnedCr}학점</b>
+              <span className="text-(--text-3)">{t('credEarned')}</span>
+              <b className="tabular-nums text-(--text-1)">{earnedCr}{t('credCrUnit')}</b>
             </div>
             <div className="h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
               <div className="h-full rounded-full bg-(--bar)"
@@ -220,31 +239,31 @@ function Credits() {
                             transition: 'width 1.1s cubic-bezier(.4,0,.2,1)' }}/>
             </div>
             <div className="flex justify-between text-[11px]">
-              <span className="text-(--text-3)">잔여</span>
-              <b className="tabular-nums text-(--accent)">{Math.max(0, gradTotal - earnedCr)}학점</b>
+              <span className="text-(--text-3)">{t('credLeft')}</span>
+              <b className="tabular-nums text-(--accent)">{Math.max(0, gradTotal - earnedCr)}{t('credCrUnit')}</b>
             </div>
             <div className="h-px bg-(--border) my-0.5"/>
             <div className="flex justify-between text-[11px]">
-              <span className="text-(--text-3)">전공</span>
+              <span className="text-(--text-3)">{t('credMajor')}</span>
               <span className="tabular-nums">
                 <b className="text-(--text-1)">{majorEarned}</b>
                 <span className="text-(--text-3)">/{majorReq}</span>
               </span>
             </div>
             <div className="flex justify-between text-[11px]">
-              <span className="text-(--text-3)">교양</span>
+              <span className="text-(--text-3)">{t('credLiberal')}</span>
               <span className="tabular-nums">
                 <b className="text-(--text-1)">{liberalEarned}</b>
                 <span className="text-(--text-3)">/{liberalReq}</span>
               </span>
             </div>
             <div className="flex justify-between text-[11px] items-center">
-              <span className="text-(--text-3)">졸업인증</span>
+              <span className="text-(--text-3)">{t('credGradCert')}</span>
               <span className={`px-1.5 py-px rounded-full text-[9px] font-semibold border border-(--border)
                 ${incompleteCerts === 0
                   ? 'bg-(--badge-neutral-bg) text-(--badge-neutral-text)'
                   : 'bg-(--warn-bg) text-(--warn-text)'}`}>
-                {incompleteCerts === 0 ? '완료' : '미완료'}
+                {incompleteCerts === 0 ? t('credDone') : t('credIncomplete')}
               </span>
             </div>
           </div>
@@ -258,12 +277,12 @@ function Credits() {
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-4.5 py-3 border-b border-(--border) flex justify-between items-center">
               <div className="flex items-center gap-2.5">
-                <span className="font-bold text-[13px]">전공</span>
+                <span className="font-bold text-[13px]">{t('credMajorSection')}</span>
                 <span className="text-xl font-bold tabular-nums text-(--text-1)"
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                   {majorEarned}
                 </span>
-                <span className="text-[11px] text-(--text-3)">/ {majorReq} 학점</span>
+                <span className="text-[11px] text-(--text-3)">/ {majorReq} {t('credCrUnit')}</span>
                 <div className="w-20 h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
                   <div className="h-full rounded-full bg-(--bar)"
                        style={{ width: barW(majorEarned, majorReq),
@@ -274,30 +293,30 @@ function Credits() {
                 ${majorEarned >= majorReq
                   ? 'bg-(--badge-neutral-bg) text-(--badge-neutral-text) border-(--border)'
                   : 'bg-(--warn-bg) text-(--warn-text) border-(--border)'}`}>
-                {majorEarned >= majorReq ? '완료' : `${majorReq - majorEarned}학점 잔여`}
+                {majorEarned >= majorReq ? t('credDone') : `${majorReq - majorEarned}${t('credCrLeft')}`}
               </span>
             </div>
 
             <div className="grid px-4.5 py-2 text-[10px] font-semibold text-(--text-3)
                             border-b border-(--border)"
                  style={{ gridTemplateColumns: '10px 1fr 80px 80px 1fr', gap: '0 8px' }}>
-              <span/><span>영역</span>
-              <span className="text-right">이수</span>
-              <span className="text-right">기준</span>
-              <span className="pl-3">진행률</span>
+              <span/><span>{t('credArea')}</span>
+              <span className="text-right">{t('credEarnedCol')}</span>
+              <span className="text-right">{t('credReqCol')}</span>
+              <span className="pl-3">{t('credProgressCol')}</span>
             </div>
 
             {[
-              { label: '전공필수', earned: majorMustEarned, required: majorMustReq },
-              { label: '전공선택', earned: majorElecEarned, required: majorElecReq },
+              { key: '전공필수', label: t('catReqMajor'),   earned: majorMustEarned, required: majorMustReq },
+              { key: '전공선택', label: t('catElectMajor'), earned: majorElecEarned, required: majorElecReq },
             ].map(row => (
-              <div key={row.label}
+              <div key={row.key}
                    className="grid px-4.5 py-2.5 items-center border-b border-(--border) last:border-none"
                    style={{ gridTemplateColumns: '10px 1fr 80px 80px 1fr', gap: '0 8px' }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-(--text-2) inline-block"/>
                 <span className="text-[12px]">{row.label}</span>
                 <span className="text-right text-[12px] font-bold tabular-nums text-(--text-1)">{row.earned}</span>
-                <span className="text-right text-[11px] text-(--text-3)">{row.required}학점</span>
+                <span className="text-right text-[11px] text-(--text-3)">{row.required}{t('credCrUnit')}</span>
                 <div className="pl-3">
                   <div className="h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
                     <div className="h-full rounded-full bg-(--bar)"
@@ -314,13 +333,13 @@ function Credits() {
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-4.5 py-3 border-b border-(--border) flex justify-between items-center">
               <div className="flex items-center gap-2.5">
-                <span className="font-bold text-[13px]">필수 교양</span> 
+                <span className="font-bold text-[13px]">{t('credLibSection')}</span>
                 {/* 필수 교양 분야에 대해서만 표기하도록 함 */}
                 <span className="text-xl font-bold tabular-nums text-(--text-1)"
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                   {liberalEarned}
                 </span>
-                <span className="text-[11px] text-(--text-3)">/ {liberalReq} 학점</span>
+                <span className="text-[11px] text-(--text-3)">/ {liberalReq} {t('credCrUnit')}</span>
                 <div className="w-20 h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
                   <div className="h-full rounded-full bg-(--bar)"
                        style={{ width: barW(liberalEarned, liberalReq),
@@ -331,17 +350,17 @@ function Credits() {
                 ${liberalComplete
                   ? 'bg-(--badge-neutral-bg) text-(--badge-neutral-text) border-(--border)'
                   : 'bg-(--warn-bg) text-(--warn-text) border-(--border)'}`}>
-                {liberalComplete ? '완료' : `${liberalReq - liberalEarned}학점 잔여`}
+                {liberalComplete ? t('credDone') : `${liberalReq - liberalEarned}${t('credCrLeft')}`}
               </span>
             </div>
 
             <div className="grid px-4.5 py-2 text-[10px] font-semibold text-(--text-3)
                             border-b border-(--border)"
                  style={{ gridTemplateColumns: '10px 1fr 80px 80px 1fr', gap: '0 8px' }}>
-              <span/><span>영역</span>
-              <span className="text-right">이수</span>
-              <span className="text-right">기준</span>
-              <span className="pl-3">진행률</span>
+              <span/><span>{t('credArea')}</span>
+              <span className="text-right">{t('credEarnedCol')}</span>
+              <span className="text-right">{t('credReqCol')}</span>
+              <span className="pl-3">{t('credProgressCol')}</span>
             </div>
 
             {liberalAreaRows.map(row => (
@@ -352,7 +371,7 @@ function Credits() {
                 <span className="text-[12px]">{row.name}</span>
                 <span className="text-right text-[12px] font-bold tabular-nums text-(--text-1)">{row.earned}</span>
                 <span className="text-right text-[11px] text-(--text-3)">
-                  {row.required > 0 ? `${row.required}학점` : '-'}
+                  {row.required > 0 ? `${row.required}${t('credCrUnit')}` : '-'}
                 </span>
                 <div className="pl-3">
                   <div className="h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
@@ -375,19 +394,19 @@ function Credits() {
 
           {/* 헤더 */}
           <div className="flex px-4.5 py-3 border-b border-(--border) justify-between items-center">
-            <span className="font-bold text-[13px]">졸업 요건 현황</span>
+            <span className="font-bold text-[13px]">{t('credReqStatus')}</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setAddOpen(!addOpen); setNewType(''); setNewDetail(''); }}
                 className="text-[11px] font-medium text-(--text-2) border border-(--border)
                            rounded-lg px-2.5 py-1 hover:bg-(--surface-2) transition-colors">
-                + 항목 추가
+                {t('credAddItem')}
               </button>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border border-(--border)
                 ${incompleteCerts === 0
                   ? 'bg-(--badge-neutral-bg) text-(--badge-neutral-text)'
                   : 'bg-(--warn-bg) text-(--warn-text)'}`}>
-                {incompleteCerts}개 미완료
+                {incompleteCerts}{t('credIncompleteN')}
               </span>
             </div>
           </div>
@@ -399,14 +418,14 @@ function Credits() {
               <input
                 value={newType}
                 onChange={e => setNewType(e.target.value)}
-                placeholder="항목명 (예: 영어 공인 성적)"
+                placeholder={t('credItemName')}
                 className="px-3 py-1.5 text-[12px] rounded-lg bg-(--surface) border border-(--border)
                            text-(--text-1) focus:outline-none focus:border-(--text-2) transition-colors"
               />
               <input
                 value={newDetail}
                 onChange={e => setNewDetail(e.target.value)}
-                placeholder="기준 (예: 토익 700+)"
+                placeholder={t('credItemReq')}
                 className="px-3 py-1.5 text-[12px] rounded-lg bg-(--surface) border border-(--border)
                            text-(--text-1) focus:outline-none focus:border-(--text-2) transition-colors"
               />
@@ -415,13 +434,13 @@ function Credits() {
                   onClick={() => { setAddOpen(false); setNewType(''); setNewDetail(''); }}
                   className="px-3 py-1 text-[11px] border border-(--border) rounded-lg
                              text-(--text-2) hover:bg-(--surface-2) transition-colors">
-                  취소
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={addItem}
                   className="px-3 py-1 text-[11px] font-semibold rounded-lg
                              bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-                  추가
+                  {t('credAddBtn')}
                 </button>
               </div>
             </div>
@@ -429,10 +448,10 @@ function Credits() {
 
           {/* 항목 추가 => */}
           {certLoading ? (
-            <div className="px-4.5 py-6 text-center text-[11px] text-(--text-3)">불러오는 중...</div>
+            <div className="px-4.5 py-6 text-center text-[11px] text-(--text-3)">{t('loading')}</div>
           ) : certItems.length === 0 ? (
             <div className="px-4.5 py-6 text-center text-[11px] text-(--text-3)">
-              항목이 없습니다. 엑셀 업로드 또는 직접 추가하세요.
+              {t('credNoItems')}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 pb-4">
@@ -468,7 +487,7 @@ function Credits() {
                       ${item.note === 'done'
                         ? 'bg-(--badge-neutral-bg) text-(--badge-neutral-text)'
                         : 'bg-(--warn-bg) text-(--warn-text)'}`}>
-                    {item.note === 'done' ? '완료 ✓' : '미완료'}
+                    {item.note === 'done' ? t('credDoneMark') : t('credIncomplete')}
                   </button>
                 </div>
               ))}

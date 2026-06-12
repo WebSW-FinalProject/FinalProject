@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Eye, Heart } from 'lucide-react';
-import { timeAgo, POST_TAG } from './dashHelper';
+import { timeAgo } from './dashHelper';
 import type { BoardPost } from './dashHelper';
+import { useLang } from '../../../LangContext';
 
 // 카테고리별 배지 색 (Board.tsx 의 CATEGORIES 와 동일한 UI)
 const CAT_STYLE: Record<string, { bg: string; color: string }> = {
@@ -13,9 +14,18 @@ const CAT_STYLE: Record<string, { bg: string; color: string }> = {
 
 // 커뮤니티 최신 게시글 미리보기 블럭
 // onGoToBoard(postId?) : 더보기 = postId 없이, 게시글 클릭 = postId와 함께 호출
-function CommunityPreview({ onGoToBoard }: 
+function CommunityPreview({ onGoToBoard }:
   { onGoToBoard?: (postId?: number) => void }) {
+  const { t } = useLang();
   const [posts, setPosts] = useState<BoardPost[]>([]);
+
+  // 카테고리 영문 코드 → 표시 레이블 (Board.tsx 의 CATEGORIES 와 동일한 영문 고정)
+  const POST_LABEL: Record<string, string> = {
+    GRADUATION: 'Graduation',
+    JOB_HUNT:   'Job Hunt',
+    DAILY:      'Daily',
+    NOTICE:     'Notice',
+  };
 
   async function loadPosts() {
     try {
@@ -38,13 +48,13 @@ function CommunityPreview({ onGoToBoard }:
 
       <div className="px-3.5 py-3 border-b border-(--border)
                       flex justify-between items-center shrink-0">
-        <span className="font-bold text-sm">커뮤니티</span>
+        <span className="font-bold text-sm">{t('communityTitle')}</span>
         <button
           onClick={() => onGoToBoard?.()}
           className="text-[10px] font-medium text-(--text-2)
                      border border-(--border) rounded-lg
                      px-2 py-0.5 hover:bg-(--surface-2) transition-colors">
-          더보기
+          {t('communityViewMore')}
         </button>
       </div>
 
@@ -64,14 +74,14 @@ function CommunityPreview({ onGoToBoard }:
                   {/* 카테고리 UI — Board.tsx 와 동일 UI */}
                   <span className="px-1.5 py-px rounded-full text-[9px] font-semibold shrink-0"
                         style={{ background: catStyle.bg, color: catStyle.color }}>
-                    {POST_TAG[post.category] ?? post.category}
+                    {POST_LABEL[post.category] ?? post.category}
                   </span>
                   <span className="text-[11px] font-medium text-(--text-1) truncate">
                     {post.title}
                   </span>
                 </div>
                 <p className="text-[10px] text-(--text-3)">
-                  {post.author_username} · {timeAgo(post.create_date)}
+                  {post.author_username} · {timeAgo(post.create_date, t)}
                 </p>
               </div>
 
@@ -91,7 +101,7 @@ function CommunityPreview({ onGoToBoard }:
         {posts.length === 0 && (
           <div className="flex-1 flex items-center justify-center
                           text-[11px] text-(--text-3)">
-            게시글이 없습니다
+            {t('communityNoPosts')}
           </div>
         )}
       </div>

@@ -2,17 +2,16 @@
 import { useState, useEffect } from 'react';
 import { LayoutGrid, PlusCircle, Trash2 } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
+import { useLang } from '../../../LangContext';
 
-const tabs = [
-  { id: 'timetable',   name: '시간표',   icon: <LayoutGrid size={13}/>  },
-  { id: 'addSchedule', name: '일정 추가', icon: <PlusCircle size={13}/>  },
+const TAB_IDS = [
+  { id: 'timetable',   labelKey: 'ttTimetableTab',   icon: <LayoutGrid size={13}/>  },
+  { id: 'addSchedule', labelKey: 'ttAddScheduleTab',  icon: <PlusCircle size={13}/>  },
 ]; // 시간표 | 일정추가
 
-const DAY_COLS   = ['월','화','수','목','금']; // 시간표 - 수업 추가 팝업 - 요일
-const TYPE_OPTS  = [
-  { value:'b', label:'전공필수' }, { value:'p', label:'전공선택' },
-  { value:'c', label:'교양' },     { value:'g', label:'기타' },
-]; // 시간표 - 수업 추가 팝업 - 구분 
+const DAY_COL_KEYS = ['ttMon','ttTue','ttWed','ttThu','ttFri']; // 번역 키
+const TYPE_VALS  = ['b','p','c','g']; // 구분 값 (DB 저장용)
+const TYPE_KEYS  = ['ttTypeReqMajor','ttTypeElectMajor','ttTypeLib','ttTypeOther']; // 번역 키
 
 
 type Block   = { id:number; col:number; grid_row:string;
@@ -110,8 +109,21 @@ function formatEventDate(dateStr: string, timeStr: string | null) {
 
 function Timetable() {
 
+  const { t } = useLang();
+
+  // 번역된 배열 (렌더 시점에 생성)
+  const DAY_COLS  = DAY_COL_KEYS.map(k => t(k));  // ['월','화','수','목','금'] or translated
+  const TYPE_OPTS = TYPE_VALS.map((v, i) => ({ value: v, label: t(TYPE_KEYS[i]) }));
+
+  // 일정 이벤트 타입: DB 값(한국어) → 번역 표시 레이블
+  const EV_TYPE_LABEL: Record<string, string> = {
+    '과제': t('ttEvAssignment'), '시험': t('ttEvExam'),
+    '발표': t('ttEvPresentation'), '프로젝트': t('ttEvProject'), '기타': t('ttEvOther'),
+  };
+  const EV_TYPE_VALS = ['과제','시험','발표','프로젝트','기타'] as const;
+
   const [tab, setTab] = useState('timetable'); // 시간표 | 일정추가 탭 관리
-  const isTable = (tab === tabs[0].id);
+  const isTable = (tab === TAB_IDS[0].id);
 
 
   const [evForm, setEvForm] = useState(
@@ -219,7 +231,7 @@ function Timetable() {
             body: JSON.stringify({
               col:      dt.col,
               grid_row: `${startRow}/${endRow}`,
-              name:     bForm.name || '새 수업',
+              name:     bForm.name || t('ttNewClass'),
               time:     `${dt.startTime}~${dt.endTime}`,
               type:     bForm.type,
             }),
@@ -231,7 +243,7 @@ function Timetable() {
           newBlocks.push({
             id: data.id, col: dt.col,
             grid_row: `${startRow}/${endRow}`,
-            name: bForm.name || '새 수업',
+            name: bForm.name || t('ttNewClass'),
             time: `${dt.startTime}~${dt.endTime}`,
             type: bForm.type,
           });
@@ -347,7 +359,7 @@ function Timetable() {
 
       {/* Tab : A 시간표 | B 일정추가 */}
       <div className="flex flex-row mb-4 gap-1.5 mx-4">
-        {tabs.map(({ id, name, icon }) => (
+        {TAB_IDS.map(({ id, labelKey, icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -357,7 +369,7 @@ function Timetable() {
                 ? 'bg-(--accent) text-(--surface) font-bold'
                 : 'text-(--text-2) hover:bg-(--surface-2) hover:text-(--text-1)'
               }`}>
-            {icon} {name}
+            {icon} {t(labelKey)}
           </button>
         ))}
       </div>
@@ -375,18 +387,14 @@ function Timetable() {
               <div className="px-4 py-3 border-b border-(--border) 
                               flex justify-between items-center">
                 <div className="flex items-center gap-2.5">
-                  <span className="font-bold text-[13px]"> 이번학기 시간표 </span>
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold
-                                  bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                    2025년 1학기
-                  </span>
+                  <span className="font-bold text-[13px]"> {t('ttMyTimetable')} </span>
                 </div>
 
                 <button
                   onClick={() => setAddOpen(true)}
                   className="flex items-center gap-1 text-[11px] font-semibold px-3 py-1 rounded-lg
                              bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-                  <PlusCircle size={12}/> 수업 추가
+                  <PlusCircle size={12}/> {t('ttAddClass')}
                 </button>
               </div>
 
@@ -397,7 +405,7 @@ function Timetable() {
                                 font-bold text-(--text-2) gap-1 pb-2"
                     style={{ gridTemplateColumns: '32px repeat(5,1fr)' }}>
                   <div/>
-                  {['월요일','화요일','수요일','목요일','금요일'].map(
+                  {[t('ttMonFull'),t('ttTueFull'),t('ttWedFull'),t('ttThuFull'),t('ttFriFull')].map(
                      d => <div key={d}> {d} </div>)}
                 </div>
 
@@ -457,7 +465,7 @@ function Timetable() {
                               border-(--border) overflow-hidden flex-none"
                   style={{ boxShadow: 'var(--shadow-card)' }}>
                 <div className="px-3.5 py-2.5 border-b border-(--border)">
-                  <span className="font-bold text-[12px]">수강 과목</span>
+                  <span className="font-bold text-[12px]">{t('ttCourses')}</span>
                 </div>
 
                 <div className="px-3 py-2 flex flex-col gap-1">
@@ -474,7 +482,7 @@ function Timetable() {
                     </div>
                   ))}
                   {blocks.length === 0 && (
-                    <p className="text-[11px] text-(--text-3) py-1">등록된 수업이 없습니다</p>
+                    <p className="text-[11px] text-(--text-3) py-1">{t('ttNoClasses')}</p>
                   )}
                 </div>
               </div>
@@ -484,7 +492,7 @@ function Timetable() {
                               overflow-hidden flex-1"
                   style={{ boxShadow: 'var(--shadow-card)' }}>
                 <div className="px-3.5 py-2.5 border-b border-(--border)">
-                  <span className="font-bold text-[12px]">다가오는 일정</span>
+                  <span className="font-bold text-[12px]">{t('ttUpcoming')}</span>
                 </div>
                 <div className="flex flex-col divide-y divide-(--border)">
                   {events.slice(0, 5).map(ev => {
@@ -517,7 +525,7 @@ function Timetable() {
                   {events.length === 0 && (
                     <div className="flex items-center justify-center py-6
                                     text-[11px] text-(--text-3)">
-                      등록된 일정이 없습니다
+                      {t('ttNoEvents')}
                     </div>
                   )}
                 </div>
@@ -537,17 +545,17 @@ function Timetable() {
                             border-(--border) overflow-hidden"
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <div className="px-4.5 py-3 border-b border-(--border)">
-                <span className="font-bold text-[13px]">새 일정 추가</span>
+                <span className="font-bold text-[13px]">{t('ttAddEvent')}</span>
               </div>
               <div className="p-4.5 flex flex-col gap-3">
                 <div>
                   {/* 제목 */}
-                  <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">제목</p>
+                  <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttTitle')}</p>
                   <input
                     type="text"
                     value={evForm.title}
                     onChange={e => setEvForm(p => ({ ...p, title: e.target.value }))}
-                    placeholder="일정 제목을 입력하세요."
+                    placeholder={t('ttTitlePh')}
                     className="w-full px-3 py-2 text-[12px] rounded-lg
                               bg-(--surface) border border-(--border) text-(--text-1)
                               placeholder:text-(--text-3) focus:outline-none
@@ -557,7 +565,7 @@ function Timetable() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     {/* 날짜 */}
-                    <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">날짜</p>
+                    <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttDate')}</p>
                     <input
                       type="date"
                       value={evForm.date}
@@ -569,7 +577,7 @@ function Timetable() {
 
                   <div>
                     {/* 시간 */}
-                    <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">시간</p>
+                    <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttTime')}</p>
                     <input
                       type="time"
                       value={evForm.time}
@@ -583,15 +591,15 @@ function Timetable() {
 
                 <div>
                   {/* 분류 */}
-                  <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">분류</p>
+                  <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttCategory')}</p>
                   <select
                     value={evForm.type}
                     onChange={e => setEvForm(p => ({ ...p, type: e.target.value }))}
                     className="w-full px-3 py-2 text-[12px] rounded-lg
                               bg-(--surface) border border-(--border) text-(--text-1)
                               focus:outline-none focus:border-(--text-2) transition-colors">
-                    {['과제','시험','발표','프로젝트','기타'].map(t => (
-                      <option key={t} value={t}>{t}</option>
+                    {EV_TYPE_VALS.map(ev => (
+                      <option key={ev} value={ev}>{EV_TYPE_LABEL[ev]}</option>
                     ))}
                   </select>
                 </div>
@@ -599,12 +607,12 @@ function Timetable() {
                 <div>
                   {/* 메모 */}
                   <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">
-                    메모 <span className="font-normal text-(--text-3)">(선택)</span>
+                    {t('ttMemo')} <span className="font-normal text-(--text-3)">{t('ttOptional')}</span>
                   </p>
                   <textarea
                     value={evForm.memo}
                     onChange={e => setEvForm(p => ({ ...p, memo: e.target.value }))}
-                    placeholder="메모를 입력하세요..."
+                    placeholder={t('ttMemoPh')}
                     className="w-full h-18 px-3 py-2 text-[12px] rounded-lg resize-none
                               bg-(--surface) border border-(--border) text-(--text-1)
                               placeholder:text-(--text-3) focus:outline-none
@@ -618,7 +626,7 @@ function Timetable() {
                   className="px-4 py-2 rounded-lg text-[12px] font-semibold w-full
                              bg-(--text-1) text-(--surface) hover:opacity-85
                              transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-                  일정 저장
+                  {t('ttSaveEvent')}
                 </button>
               </div>
             </div>
@@ -629,7 +637,7 @@ function Timetable() {
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <div className="px-4.5 py-3 border-b border-(--border) 
                               flex justify-between items-center">
-                <span className="font-bold text-[13px]">내 일정 목록</span>
+                <span className="font-bold text-[13px]">{t('ttMyEvents')}</span>
                 <span className="text-[11px] text-(--text-3)">
                   {events.length}개
                 </span>
@@ -656,7 +664,7 @@ function Timetable() {
                         <p className="text-[12px] font-semibold text-(--text-1)">{ev.title}</p>
                         <p className="text-[10px] text-(--text-3)">
                           {formatEventDate(ev.event_date, ev.event_time)}
-                          {ev.type !== '기타' && ` · ${ev.type}`}
+                          {ev.type !== '기타' && ` · ${EV_TYPE_LABEL[ev.type] ?? ev.type}`}
                         </p>
                       </div>
 
@@ -665,7 +673,7 @@ function Timetable() {
                         onClick={() => deleteEvent(ev.id)}
                         className="text-[10px] text-(--text-3)
                                    hover:text-(--warn-text) transition-colors">
-                        삭제
+                        {t('delete')}
                       </button>
                     </div>
                   );
@@ -673,7 +681,7 @@ function Timetable() {
                 {events.length === 0 && (
                   <div className="flex items-center justify-center py-8
                                   text-[11px] text-(--text-3)">
-                    등록된 일정이 없습니다
+                    {t('ttNoEvents')}
                   </div>
                 )}
               </div>
@@ -687,18 +695,18 @@ function Timetable() {
 
     {/* #팝업1 : 시간표 - 수업 추가 팝업 */}
     <Popup open={addOpen} onClose={() => setAddOpen(false)} width="360px">
-      <PopupHeader title={<><PlusCircle size={14} className="text-(--accent)"/>수업 추가</>}
+      <PopupHeader title={<><PlusCircle size={14} className="text-(--accent)"/>{t('ttAddClassTitle')}</>}
                    onClose={() => setAddOpen(false)} /> {/* 부모에게 창닫기 소유권 위탁 */}
 
-      
+
       <div className="p-4.5 flex flex-col gap-3">
 
         {/* 과목명 */}
         <div>
-          <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">과목명</p>
+          <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttCourseName')}</p>
           <input value={bForm.name} 
                  onChange={e => setBForm(p => ({ ...p, name:e.target.value }))}
-                 placeholder="예: 자료구조"
+                 placeholder={t('ttCourseNamePh')}
                  className="w-full px-3 py-2 text-[12px] rounded-lg bg-(--surface) 
                             border border-(--border) text-(--text-1) 
                             placeholder:text-(--text-3) focus:outline-none 
@@ -707,7 +715,7 @@ function Timetable() {
 
         {/* 요일 */}
         <div>
-          <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">요일</p>
+          <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttDay')}</p>
           <div className="flex gap-1.5">
             {/* 1열은 시간 라벨이므로 i+2 로 매핑 */}
             {DAY_COLS.map((d, i) => {
@@ -749,7 +757,7 @@ function Timetable() {
             </span>
 
             <div>
-              <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">시작</p>
+              <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttStart')}</p>
               <input type="time" value={dt.startTime}
                      onChange={e => updateDayTime(dt.col, 'startTime', e.target.value)}
                      className="w-full px-3 py-2 text-[12px] rounded-lg
@@ -761,7 +769,7 @@ function Timetable() {
             <span className="text-(--text-3) pb-2">~</span>
 
             <div>
-              <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">종료</p>
+              <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttEnd')}</p>
               <input type="time" value={dt.endTime}
                      onChange={e => updateDayTime(dt.col, 'endTime', e.target.value)}
                      className="w-full px-3 py-2 text-[12px] rounded-lg
@@ -775,18 +783,18 @@ function Timetable() {
 
         {/* 영역 구분 */}
         <div>
-          <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">구분</p>
+          <p className="text-[11px] font-semibold text-(--text-2) mb-1.5">{t('ttType')}</p>
           <div className="flex gap-1.5">
-            {TYPE_OPTS.map(t => (
-              <button key={t.value} onClick={() => setBForm(p => ({ ...p, type:t.value }))}
-                      className="flex-1 py-1.5 rounded-lg text-[10px] 
+            {TYPE_OPTS.map(opt => (
+              <button key={opt.value} onClick={() => setBForm(p => ({ ...p, type:opt.value }))}
+                      className="flex-1 py-1.5 rounded-lg text-[10px]
                                 font-medium transition-colors border"
-                      style={bForm.type === t.value
-                        ? { background:`var(--timetable-${t.value}-bg)`, 
-                            border:`1px solid var(--timetable-${t.value}-bd)`, 
-                            color:`var(--timetable-${t.value}-text)` }
+                      style={bForm.type === opt.value
+                        ? { background:`var(--timetable-${opt.value}-bg)`,
+                            border:`1px solid var(--timetable-${opt.value}-bd)`,
+                            color:`var(--timetable-${opt.value}-text)` }
                         : { borderColor:'var(--border)', color:'var(--text-2)' }}>
-                {t.label}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -796,17 +804,17 @@ function Timetable() {
 
         {/* 취소|추가 버튼 */}
       <PopupFooter>
-        <button onClick={() => setAddOpen(false)} 
-                className="px-4 py-1.5 rounded-lg text-[12px] border 
-                          border-(--border) text-(--text-2) 
+        <button onClick={() => setAddOpen(false)}
+                className="px-4 py-1.5 rounded-lg text-[12px] border
+                          border-(--border) text-(--text-2)
                           hover:bg-(--surface-2) transition-colors">
-                취소
+                {t('cancel')}
         </button>
-        <button onClick={addBlock} 
-                className="px-4 py-1.5 rounded-lg text-[12px] font-semibold 
-                            bg-(--text-1) text-(--surface) hover:opacity-85 
+        <button onClick={addBlock}
+                className="px-4 py-1.5 rounded-lg text-[12px] font-semibold
+                            bg-(--text-1) text-(--surface) hover:opacity-85
                             transition-opacity">
-                추가
+                {t('add')}
         </button>
       </PopupFooter>
       
@@ -823,8 +831,8 @@ function Timetable() {
                style={{ background:`var(--timetable-${colorMap[editBlock.name]}-bg)`,
                         border:`1px solid var(--timetable-${colorMap[editBlock.name]}-bd)`,
                         color:`var(--timetable-${colorMap[editBlock.name]}-text)` }}>
-            {editBlock.time} &nbsp; · 
-            &nbsp; {TYPE_OPTS.find(t => t.value === editBlock.type)?.label}
+            {editBlock.time} &nbsp; ·
+            &nbsp; {TYPE_OPTS.find(opt => opt.value === editBlock.type)?.label}
           </div>
 
           <button onClick={() => deleteBlock(editBlock.id)}
@@ -832,7 +840,7 @@ function Timetable() {
                              rounded-lg text-[12px] border transition-colors
                              text-(--alert-warn) border-(--alert-border)
                              hover:bg-(--alert-warn-bg)">
-            <Trash2 size={13}/> 삭제
+            <Trash2 size={13}/> {t('delete')}
           </button>
         </div>
       </Popup>

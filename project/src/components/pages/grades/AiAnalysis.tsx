@@ -5,6 +5,7 @@ import { TrendingUp, AlertCircle, BarChart2, FileText,
          MessageSquare, Globe } from 'lucide-react';
 import { useGradeData } from '../../../hooks/useGradeData';
 import { calcGpa, semLabel } from './dashHelper';
+import { useLang } from '../../../LangContext';
 
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, BarElement,
@@ -34,6 +35,7 @@ interface AiResult {
 function AiAnalysis() {
 
   const { semesters, courses } = useGradeData();
+  const { t } = useLang();
 
   // Groq API 키 (localStorage 유지)
   const [apiKey,      setApiKey]      = useState(() => localStorage.getItem('groq_key') || '');
@@ -44,8 +46,8 @@ function AiAnalysis() {
   const [question,     setQuestion]     = useState('');
   const [showQuestion, setShowQuestion] = useState(false);
 
-  // 언어 선택
-  const [lang, setLang] = useState<'ko' | 'en'>('ko');
+  // AI 응답 언어 선택 (UI 언어와 별개)
+  const [aiLang, setAiLang] = useState<'ko' | 'en'>('ko');
 
   // 분석 결과 + 상태
   const [result,       setResult]       = useState<AiResult | null>(null);
@@ -65,7 +67,7 @@ function AiAnalysis() {
       .then(data => {
         if (!data) return;
         setResult(data.result);
-        if (data.lang) setLang(data.lang);
+        if (data.lang) setAiLang(data.lang);
         if (data.question) setQuestion(data.question);
         const date = new Date(data.analyzed_at).toLocaleDateString('ko-KR');
         setLastAnalyzed(date);
@@ -92,7 +94,7 @@ function AiAnalysis() {
     setError(null);
     try {
       const token = localStorage.getItem('token') || '';
-      const params = new URLSearchParams({ lang });
+      const params = new URLSearchParams({ lang: aiLang });
       if (question.trim()) params.append('question', question.trim());
 
       const res = await fetch(`http://localhost:3000/api/ai/analyze?${params}`, {
@@ -123,7 +125,7 @@ function AiAnalysis() {
       const semCourses = courses.filter(c => c.semester_id === s.id);
       const gpa = calcGpa(semCourses);
       return gpa !== null ? {
-        label: i === semesters.length - 1 ? '현재' : semLabel(s),
+        label: i === semesters.length - 1 ? t('aiCurrentSem') : semLabel(s, t),
         gpa,
       } : null;
     })
@@ -146,34 +148,34 @@ function AiAnalysis() {
             </div>
             <p className="text-[16px] font-extrabold text-(--text-1) whitespace-nowrap"
                style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-              AI 성적분석
+              {t('aiTitle')}
             </p>
             {lastAnalyzed && (
               <span className="text-[10px] text-(--text-3) bg-(--surface-2) px-2 py-0.5 rounded whitespace-nowrap">
-                마지막 분석 {lastAnalyzed}
+                {t('aiLastAnalyzed')}{lastAnalyzed}
               </span>
             )}
           </div>
           <p className="text-[11px] text-(--text-3) ml-9">
-            Groq AI가 학업 데이터를 분석합니다
+            {t('aiSubtitle')}
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
-          {/* 언어 토글 */}
+          {/* AI 응답 언어 토글 */}
           <div className="flex items-center bg-(--surface-2) rounded-lg border border-(--border) p-0.5 shrink-0">
             <button
-              onClick={() => setLang('ko')}
+              onClick={() => setAiLang('ko')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors whitespace-nowrap
-                ${lang === 'ko'
+                ${aiLang === 'ko'
                   ? 'bg-(--surface) text-(--text-1) shadow-sm'
                   : 'text-(--text-3) hover:text-(--text-2)'}`}>
               KO
             </button>
             <button
-              onClick={() => setLang('en')}
+              onClick={() => setAiLang('en')}
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors whitespace-nowrap
-                ${lang === 'en'
+                ${aiLang === 'en'
                   ? 'bg-(--surface) text-(--text-1) shadow-sm'
                   : 'text-(--text-3) hover:text-(--text-2)'}`}>
               EN
@@ -188,7 +190,7 @@ function AiAnalysis() {
                 ? 'border-(--accent) text-(--accent) bg-(--accent-bg)'
                 : 'border-(--border) text-(--text-3) hover:bg-(--surface-2)'}`}>
             <MessageSquare size={11} />
-            {question.trim() ? '상담 입력됨' : '상담 내용'}
+            {question.trim() ? t('aiConsultSet') : t('aiConsultBtn')}
           </button>
 
           {/* 키 설정 버튼 */}
@@ -200,7 +202,7 @@ function AiAnalysis() {
                 ? 'border-(--border) text-(--text-3) hover:bg-(--surface-2)'
                 : 'border-(--accent) text-(--accent) bg-(--accent-bg)'}`}>
             <KeyRound size={11} />
-            {apiKey ? 'API 키 변경' : 'API 키 필요'}
+            {apiKey ? t('aiChangeKey') : t('aiNeedKey')}
           </button>
 
           {/* 분석 버튼 */}
@@ -211,7 +213,7 @@ function AiAnalysis() {
                        bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity
                        disabled:opacity-50 whitespace-nowrap shrink-0">
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-            {loading ? '분석 중...' : result ? '재분석' : 'AI 분석 시작'}
+            {loading ? t('aiAnalyzing') : result ? t('aiReanalyze') : t('aiStart')}
           </button>
         </div>
       </div>
@@ -222,14 +224,14 @@ function AiAnalysis() {
              style={{ boxShadow: 'var(--shadow-card)' }}>
           <div className="px-3.5 py-2.5 border-b border-(--border) flex items-center gap-1.5">
             <MessageSquare size={12} className="text-(--accent)" />
-            <span className="text-[12px] font-semibold text-(--text-1)">AI에게 상담하고 싶은 내용</span>
-            <span className="text-[10px] text-(--text-3) ml-1">— 분석 결과에 반영됩니다</span>
+            <span className="text-[12px] font-semibold text-(--text-1)">{t('aiConsultTitle')}</span>
+            <span className="text-[10px] text-(--text-3) ml-1">{t('aiConsultNote')}</span>
           </div>
           <div className="p-3">
             <textarea
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="예) 전공 성적이 낮은 편인데 대학원 진학이 가능할까요? / 취업을 위해 어떤 과목을 더 들어야 할까요?"
+              placeholder={t('aiConsultPh')}
               rows={3}
               className="w-full text-[12px] bg-transparent outline-none text-(--text-1)
                          placeholder:text-(--text-3) resize-none leading-relaxed"
@@ -239,7 +241,7 @@ function AiAnalysis() {
                 <button
                   onClick={() => setQuestion('')}
                   className="text-[10px] text-(--text-3) hover:text-(--text-2)">
-                  초기화
+                  {t('aiClear')}
                 </button>
               </div>
             )}
@@ -256,7 +258,7 @@ function AiAnalysis() {
             value={keyInput}
             onChange={e => setKeyInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') saveKey(); }}
-            placeholder="Groq API Key 입력  (https://console.groq.com/ - API keys - 키 발급받기)" 
+            placeholder={t('aiKeyPh')}
             type="password"
             className="flex-1 text-[12px] bg-transparent outline-none text-(--text-1)
                        placeholder:text-(--text-3)"
@@ -265,7 +267,7 @@ function AiAnalysis() {
             onClick={saveKey}
             className="px-3 py-1 text-[11px] font-semibold rounded-lg
                        bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-            저장
+            {t('save')}
           </button>
         </div>
       )}
@@ -283,21 +285,21 @@ function AiAnalysis() {
              style={{ boxShadow: 'var(--shadow-card)' }}>
           <Sparkles size={28} className="text-(--text-3) mx-auto mb-2" strokeWidth={1.5}/>
           <p className="text-[13px] font-semibold text-(--text-2) mb-1">
-            {apiKey ? 'AI 분석 시작 버튼을 눌러주세요' : 'Groq API 키를 먼저 입력해주세요'}
+            {apiKey ? t('aiPressStart') : t('aiEnterKey')}
           </p>
           <p className="text-[11px] text-(--text-3)">
-            성적 데이터를 기반으로 강점 · 개선점 · 진로 추천을 분석합니다
+            {t('aiDesc')}
           </p>
           {apiKey && (
             <div className="flex items-center justify-center gap-3 mt-3">
               <div className="flex items-center gap-1.5 text-[10px] text-(--text-3)">
                 <Globe size={10} />
-                응답 언어: <b className="text-(--text-2)">{lang === 'ko' ? '한국어' : 'English'}</b>
+                {t('aiRespLang')} <b className="text-(--text-2)">{aiLang === 'ko' ? t('aiLangKo') : 'English'}</b>
               </div>
               {question.trim() && (
                 <div className="flex items-center gap-1.5 text-[10px] text-(--accent)">
                   <MessageSquare size={10} />
-                  상담 내용 포함됨
+                  {t('aiConsultIncluded')}
                 </div>
               )}
             </div>
@@ -310,8 +312,8 @@ function AiAnalysis() {
         <div className="mb-4 p-8 bg-(--surface) rounded-xl border border-(--border) text-center"
              style={{ boxShadow: 'var(--shadow-card)' }}>
           <RefreshCw size={24} className="text-(--accent) mx-auto mb-2 animate-spin"/>
-          <p className="text-[13px] text-(--text-2)">AI가 학업 데이터를 분석하는 중...</p>
-          <p className="text-[11px] text-(--text-3) mt-1">약 10~20초 소요됩니다</p>
+          <p className="text-[13px] text-(--text-2)">{t('aiAnalyzingMsg')}</p>
+          <p className="text-[11px] text-(--text-3) mt-1">{t('aiWaitMsg')}</p>
         </div>
       )}
 
@@ -325,7 +327,7 @@ function AiAnalysis() {
               <div className="flex items-center gap-1.5 mb-2">
                 <TrendingUp size={14} className="text-(--accent)"/>
                 <span className="text-[11px] font-bold text-(--accent)">
-                  {lang === 'ko' ? '강점' : 'Strength'}
+                  {t('aiStrength')}
                 </span>
               </div>
               <p className="text-[12px] font-semibold text-(--text-1) mb-1">{result.strength.title}</p>
@@ -337,7 +339,7 @@ function AiAnalysis() {
               <div className="flex items-center gap-1.5 mb-2">
                 <AlertCircle size={14} style={{ color:'var(--badge-neutral-text)' }}/>
                 <span className="text-[11px] font-bold" style={{ color:'var(--badge-neutral-text)' }}>
-                  {lang === 'ko' ? '개선 포인트' : 'Improvement'}
+                  {t('aiImprovement')}
                 </span>
               </div>
               <p className="text-[12px] font-semibold text-(--text-1) mb-1">{result.improvement.title}</p>
@@ -349,7 +351,7 @@ function AiAnalysis() {
               <div className="flex items-center gap-1.5 mb-2">
                 <BarChart2 size={14} style={{ color:'var(--navy)' }}/>
                 <span className="text-[11px] font-bold" style={{ color:'var(--navy)' }}>
-                  {lang === 'ko' ? '졸업 전망' : 'Graduation'}
+                  {t('aiGraduation')}
                 </span>
               </div>
               <p className="text-[12px] font-semibold text-(--text-1) mb-1">{result.graduationOutlook.title}</p>
@@ -369,7 +371,7 @@ function AiAnalysis() {
                 <div className="px-4 py-3 border-b border-(--border)">
                   <span className="font-bold text-[13px] flex items-center gap-1.5">
                     <TrendingUp size={14} className="text-(--accent)"/>
-                    {lang === 'ko' ? '학기별 GPA 추이' : 'GPA Trend by Semester'}
+                    {t('aiGpaTrend')}
                   </span>
                 </div>
                 <div className="px-4 pb-3 pt-3">
@@ -421,11 +423,11 @@ function AiAnalysis() {
                         }]}
                       />
                     ) : (
-                      <p className="text-[11px] text-(--text-3) text-center py-6">성적 데이터 없음</p>
+                      <p className="text-[11px] text-(--text-3) text-center py-6">{t('aiNoGradeData')}</p>
                     )}
                   </div>
                   <p className="text-[10px] text-(--text-3) mt-1.5 text-center">
-                    {lang === 'ko' ? '학기별 GPA · 누적 평균' : 'GPA · Avg'}{' '}
+                    {t('aiGpaLabel')}{' '}
                     <b className="text-(--accent)">{avgGPA.toFixed(2)}</b>
                   </p>
                 </div>
@@ -437,7 +439,7 @@ function AiAnalysis() {
                 <div className="px-3.5 py-2.5 border-b border-(--border)">
                   <span className="font-bold text-[12px] text-(--text-1) flex items-center gap-1.5">
                     <Lightbulb style={{ color: 'var(--accent)' }} size={14}/>
-                    {lang === 'ko' ? 'AI 학습 전략' : 'AI Study Strategies'}
+                    {t('aiStudyStrat')}
                   </span>
                 </div>
                 <div className="p-4 flex flex-col gap-2">
@@ -465,7 +467,7 @@ function AiAnalysis() {
                                 flex items-center gap-1.5">
                   <MapPin size={12} className="text-(--accent)"/>
                   <span className="font-bold text-[12px] text-(--accent)">
-                    {lang === 'ko' ? '진로 추천' : 'Career Recommendation'}
+                    {t('aiCareer')}
                   </span>
                 </div>
                 <div className="p-3.5">
@@ -489,7 +491,7 @@ function AiAnalysis() {
                 <div className="px-3.5 py-2.5 border-b border-(--border)">
                   <span className="font-bold text-[12px] text-(--text-1) flex items-center gap-1.5">
                     <BarChart2 style={{ color: 'var(--accent)'}} size={12}/>
-                    {lang === 'ko' ? '졸업 전망' : 'Graduation Outlook'}
+                    {t('aiGradOutlook')}
                   </span>
                 </div>
                 <div className="p-3.5">
@@ -518,13 +520,13 @@ function AiAnalysis() {
                    style={{ borderColor: 'var(--accent)', background: 'var(--accent-bg)' }}>
                 <MessageSquare size={14} className="text-(--accent)" />
                 <span className="font-bold text-[13px] text-(--accent)">
-                  {lang === 'ko' ? 'AI 상담 답변' : 'AI Consultation Response'}
+                  {t('aiConsultResp')}
                 </span>
               </div>
               <div className="p-4 bg-(--surface)">
                 <div className="mb-3 px-3 py-2 rounded-lg bg-(--accent-bg) border border-(--accent)/30">
                   <p className="text-[10px] text-(--text-3) mb-0.5">
-                    {lang === 'ko' ? '질문' : 'Question'}
+                    {t('aiQuestion')}
                   </p>
                   <p className="text-[12px] text-(--text-1) font-medium leading-relaxed">
                     {result.consultation.question}
@@ -543,7 +545,7 @@ function AiAnalysis() {
             <div className="px-4 py-3 border-b border-(--border)">
               <span className="font-bold text-[13px] text-(--text-1) flex items-center gap-1.5">
                 <FileText style={{ color: 'var(--accent)', margin: '3px'}} size={14}/>
-                {lang === 'ko' ? 'AI 종합 분석 리포트' : 'AI Comprehensive Report'}
+                {t('aiReport')}
               </span>
             </div>
             <div className="p-4 flex flex-col gap-3">

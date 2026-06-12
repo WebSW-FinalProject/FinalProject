@@ -8,6 +8,7 @@ import LandingPage from './components/pages/LandingPage';
 
 import './App.css';
 
+import { LangProvider } from './LangContext';
 import { useNavigation } from './hooks/useNavigation';
 import { useState, useEffect } from 'react';
 import type { GradesSummary } from './components/pages/grades/Dashboard';
@@ -140,6 +141,7 @@ function App() {
   }
 
   return (
+    <LangProvider> {/* KOR | ENG 상태 useLang() 사용 */}
     <div className="flex flex-col min-h-screen bg-(--bg)">
       <Header section={section} goTo={goTo} isDark={isDark} setDark={setDark}
               onLogout={handleLogout} username={username} deptLabel={deptLabel}
@@ -163,6 +165,7 @@ function App() {
 
       <Footer/>
     </div>
+    </LangProvider>
   );
 
 }
