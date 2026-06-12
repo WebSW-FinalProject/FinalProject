@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
   try {
     const userId = req.user.id;
     const [rows] = await db.query(
-      'SELECT * FROM semesters WHERE user_id = ? ORDER BY semester_year ASC, CASE term WHEN "1" THEN 1 WHEN "summer" THEN 2 WHEN "2" THEN 3 WHEN "winter" THEN 4 END ASC',
+      "SELECT * FROM semesters WHERE user_id = ? ORDER BY semester_year ASC, CASE term WHEN '1' THEN 1 WHEN 'summer' THEN 2 WHEN '2' THEN 3 WHEN 'winter' THEN 4 END ASC",
       [userId]
       // 배포 설정 문제로 추가
     );
