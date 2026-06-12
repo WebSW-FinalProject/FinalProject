@@ -8,7 +8,7 @@ function Footer() {
                        text-[11px] text-(--text-3)">
       <span className="flex items-center gap-4">
         <b className="text-(--text-2) font-bold">Uniguide</b>
-        <span>© 2025 · {t('footerPrivacy')} · {t('footerTerms')}</span>
+        <span>© 2026 · {t('footerPrivacy')} · {t('footerTerms')}</span>
       </span>
       <span>{t('footerDept')}</span>
     </footer>

@@ -1477,26 +1477,19 @@ function Dashboard(
             <div className="rounded-lg border border-(--border) overflow-hidden">
               <div className="grid text-[10px] font-semibold text-(--text-3)
                               px-3.5 py-2 bg-(--surface-2)"
-                   style={{ gridTemplateColumns: '1fr 56px 64px' }}>
+                   style={{ gridTemplateColumns: '1fr 56px' }}>
                 <span>{t('dashArea')}</span>
                 <span className="text-right">{t('dashEarned')}</span>
-                <span className="text-center">{t('dashStatus')}</span>
               </div>
 
               {Object.entries(liberalAreaMap).map(([area, earned]) => (
                 <div key={area}
                      className="grid items-center px-3.5 py-2 border-t
                                 border-(--border) text-[11px]"
-                     style={{ gridTemplateColumns: '1fr 56px 64px' }}>
+                     style={{ gridTemplateColumns: '1fr 56px' }}>
                   <span className="text-(--text-1)">{area}</span>
                   <span className="text-right font-bold tabular-nums text-(--text-1)">
                     {earned}
-                  </span>
-                  <span className="text-center">
-                    <span className="px-1.5 py-px rounded-full text-[9px] font-semibold
-                                     bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                      {earned}{t('dashCreditsUnit')}
-                    </span>
                   </span>
                 </div>
               ))}

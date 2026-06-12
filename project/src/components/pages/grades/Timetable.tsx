@@ -205,7 +205,7 @@ function Timetable() {
             // 로직은 기존 mock 처리때와 동일함
 
           // 범위 외 시간이면 처리 안하고 넘김 (처리가능한애만 처리)
-          if (endRow <= startRow || startRow < 1 || endRow > 8) continue;
+          if (endRow <= startRow || startRow < 1 || endRow > 9) continue;
 
           // 겹치는 블럭 : 해당 요일 스킵 + 수집 (alert용)
           let hasOverlap = false;

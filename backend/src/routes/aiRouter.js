@@ -99,6 +99,13 @@ router.get('/analyze', async (req, res, next) => {
 
     conn.release();
 
+    // ── 영문 상담 필드 ──
+    const enConsultationField = question ? `
+  "consultation": {
+    "question": "${question.replace(/"/g, '\\"')}",
+    "answer": "Answer the student question in 25-35 sentences with data evidence: (1) Diagnose current situation based on data 5-7 sentences, (2) Cite strong/weak courses as CourseName(Grade) format 7-10 sentences, (3) Actionable advice short/mid/long term 3-5 sentences each, (4) Conclusion and encouragement 2-3 sentences."
+  },` : '';
+
     // ── 프롬프트용 데이터 가공 ──
     const doneSems = semesters.filter(s => s.gpa != null);
     const avgGPA   = doneSems.length
@@ -200,7 +207,38 @@ ${gradReqText || '미설정'}
 ${question ? `\n[상담 요청]\n${question}` : ''}
 
 아래 JSON 구조로만 응답 (설명 금지, JSON만):
-{${consultationField}
+${lang === 'en' ? `{${enConsultationField}
+  "summary": "2-3 sentence summary of current academic status including GPA trend and enrolled courses.",
+  "strength": {
+    "title": "One-line strength title — must include actual course names",
+    "description": "Cite top courses as 'CourseName(Grade)' format. Analyze which competencies are strong and why they are valuable. 3-4 sentences."
+  },
+  "improvement": {
+    "title": "One-line improvement point — include actual course names",
+    "description": "Cite weak courses as 'CourseName(Grade)' format. Analyze root cause and provide specific improvement methods. 3-4 sentences."
+  },
+  "graduationOutlook": {
+    "title": "One-line graduation outlook",
+    "description": "Remaining credits, expected completion with current courses, estimated graduation timeline. 3-4 sentences."
+  },
+  "strategies": [
+    "Strategy 1 — specific action based on weak courses",
+    "Strategy 2 — how to deepen strong areas",
+    "Strategy 3 — how to leverage current enrolled courses",
+    "Strategy 4 — specific grade management method",
+    "Strategy 5 — short-term career-connected action"
+  ],
+  "career": {
+    "title": "Specific career title derived from top courses — include CourseName(Grade)",
+    "fields": ["Field 1", "Field 2", "Field 3"],
+    "description": "Connect strength courses to competencies to specific jobs/industries. 4-5 sentences with data evidence."
+  },
+  "report": [
+    { "title": "Major Achievement Pattern Analysis", "content": "Cite course names directly, analyze which course types are strong. Connect to current courses. 5-6 sentences." },
+    { "title": "Personalized Learning Strategies", "content": "Specify how to compensate weak areas, deepen strengths, and tackle current courses. 5-6 sentences." },
+    { "title": "Career Roadmap", "content": "Step-by-step from strength courses to projects/internships to first job. Timeline by current year. 5-6 sentences." }
+  ]
+}` : `{${consultationField}
   "summary": "현재 학업 상태 요약 2~3문장. GPA 추이와 현재 수강 중 과목도 언급.",
   "strength": {
     "title": "강점 한 줄 제목 — 반드시 실제 과목명 포함",
@@ -227,20 +265,11 @@ ${question ? `\n[상담 요청]\n${question}` : ''}
     "description": "강점 과목 → 해당 역량 → 구체적 직무/산업 연결 순서로 4~5문장. '이런 분야가 있습니다' 수준의 일반론 금지. 왜 이 학생에게 맞는지 데이터 근거 명시."
   },
   "report": [
-    {
-      "title": "전공 성취 패턴 분석",
-      "content": "과목명을 직접 인용하며 어떤 유형의 과목(이론/실습/수학/구현 등)에서 강한지 패턴 분석. 현재 수강 중 과목과 연결. 5~6문장."
-    },
-    {
-      "title": "맞춤형 학습 전략",
-      "content": "약한 과목 유형 보완법, 강한 과목 심화법, 현재 수강 중 과목 공략법을 각각 명시. 5~6문장."
-    },
-    {
-      "title": "진로 로드맵",
-      "content": "강점 과목 → 관련 프로젝트/인턴 → 첫 취업까지 단계별 로드맵. 현재 학년 기준으로 시기 명시. 5~6문장."
-    }
+    { "title": "전공 성취 패턴 분석", "content": "과목명을 직접 인용하며 어떤 유형의 과목(이론/실습/수학/구현 등)에서 강한지 패턴 분석. 현재 수강 중 과목과 연결. 5~6문장." },
+    { "title": "맞춤형 학습 전략", "content": "약한 과목 유형 보완법, 강한 과목 심화법, 현재 수강 중 과목 공략법을 각각 명시. 5~6문장." },
+    { "title": "진로 로드맵", "content": "강점 과목 → 관련 프로젝트/인턴 → 첫 취업까지 단계별 로드맵. 현재 학년 기준으로 시기 명시. 5~6문장." }
   ]
-}`;
+}`}`;
 
     // ── Groq 호출 ──
     const groqKey = req.headers['x-ai-key'];

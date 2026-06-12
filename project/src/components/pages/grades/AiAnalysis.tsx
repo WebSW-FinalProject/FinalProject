@@ -335,6 +335,7 @@ function AiAnalysis() {
               <p className="text-[10px] text-(--text-3) leading-relaxed">{result.strength.description}</p>
             </div>
 
+            {result.improvement && (
             <div className="bg-(--surface) rounded-xl border border-(--border) p-3.5"
                  style={{ boxShadow:'var(--shadow-card)', borderLeft:'3px solid var(--badge-neutral-text)' }}>
               <div className="flex items-center gap-1.5 mb-2">
@@ -346,6 +347,7 @@ function AiAnalysis() {
               <p className="text-[12px] font-semibold text-(--text-1) mb-1">{result.improvement.title}</p>
               <p className="text-[10px] text-(--text-3) leading-relaxed">{result.improvement.description}</p>
             </div>
+            )}
 
             <div className="bg-(--surface) rounded-xl border border-(--border) p-3.5"
                  style={{ boxShadow:'var(--shadow-card)', borderLeft:'3px solid var(--navy)' }}>
