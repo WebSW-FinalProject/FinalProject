@@ -12,6 +12,7 @@ import { useNavigation } from './hooks/useNavigation';
 import { useState, useEffect } from 'react';
 import type { GradesSummary } from './components/pages/grades/Dashboard';
 import { getCurrentSem } from './components/pages/grades/dashConnectAPI';
+import { calcGpa } from './components/pages/grades/dashHelper';
 
 
 function App() {
@@ -65,10 +66,12 @@ function App() {
       const gradRes = await fetch('http://localhost:3000/api/graduation', { headers: hdr });
       const gradReqs: any[] = gradRes.ok ? await gradRes.json() : [];
 
-      // avgGPA: 완료 학기(gpa not null) 평균
-      const doneSems = sems.filter(s => s.gpa != null);
-      const avgGPA = doneSems.length
-        ? doneSems.reduce((a, s) => a + parseFloat(s.gpa), 0) / doneSems.length
+      // avgGPA: semesters.gpa 컬럼 대신 courses에서 직접 계산 (s.gpa 가 null인 경우 대응)
+      const semGpas = sems
+        .map(s => calcGpa(allCourses.filter(c => c.semester_id === s.id)))
+        .filter((g): g is number => g !== null);
+      const avgGPA = semGpas.length
+        ? semGpas.reduce((a, g) => a + g, 0) / semGpas.length
         : 0;
 
       // 현재 학기 과목 (Dashboard 와 동일 로직)

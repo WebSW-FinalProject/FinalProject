@@ -83,6 +83,10 @@ app.use('/api/schedule', authMiddleware, scheduleRouter);
 const timetableRouter = require('./src/routes/timetableRouter');
 app.use('/api/timetable', authMiddleware, timetableRouter);
 
+// ai 성적분석 라우터
+const aiRouter = require('./src/routes/aiRouter');
+app.use('/api/ai', authMiddleware, aiRouter);
+
 app.use((err, req, res, next) => {
   const status  = err.status || 500;
   const message = err.message || '서버 오류가 발생했습니다.';

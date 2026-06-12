@@ -198,6 +198,19 @@ CREATE TABLE IF NOT EXISTS course_plan_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+-- ai_analysis_results (AI 성적분석 결과 저장 — user당 1행 upsert)
+-- result: JSON 분석 결과, lang: 응답 언어(ko/en), question: 상담 내용
+-- FK: user_id => users(id), CASCADE
+CREATE TABLE IF NOT EXISTS ai_analysis_results (
+  user_id     INT UNSIGNED  PRIMARY KEY,
+  result      JSON          NOT NULL,
+  lang        CHAR(2)       NOT NULL DEFAULT 'ko',
+  question    TEXT          NULL,
+  analyzed_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_ai_result_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 -- course_plan_meta (수강신청 계획 메타 - 메모 + 표준이수모형 이미지)
 -- user당 학기당 1행 (UNIQUE KEY로 중복 방지)
 -- FK: user_id => users(id), semester_id => semesters(id), CASCADE
