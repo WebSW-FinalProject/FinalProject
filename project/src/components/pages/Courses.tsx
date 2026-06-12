@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '../../api';
 import { useState, useRef } from 'react';
 import { LayoutGrid, StickyNote, ListChecks, GripVertical,
          BarChart2, ChevronRight, X, Upload } from 'lucide-react';
@@ -137,7 +138,6 @@ function Courses() {
     if (liberalRequiredMap[lbl]) liberalReqs.push({ label: lbl, ...liberalRequiredMap[lbl] });
   }
 
-  const liberalRequiredTotal = liberalReqs.reduce((s, r) => s + r.required, 0) || 1;
 
   const majorStats = MAJOR_CATEGORIES.map(cat => {
     const current  = earnedByMajor[cat.label] || 0;
@@ -238,7 +238,7 @@ function Courses() {
               /* 이미지가 있으면 표시 */
               <div className="relative w-full h-full group">
                 <img
-                  src={`http://localhost:3000${meta.image_path}`}
+                  src={`${API_BASE}${meta.image_path}`}
                   alt={t('coursesCurriculum')}
                   className="w-full h-full object-contain rounded-lg"
                 />
@@ -577,3 +577,6 @@ function Courses() {
 }
 
 export default Courses;
+
+
+

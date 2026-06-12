@@ -19,7 +19,9 @@ const app = express();
 // 2) json 객체로 요청 본문이 들어오면 그것을 파싱해줌 (express.json())
 // req.body.* 형태로 데이터 취급할 수 있음!
 
-app.use(cors());          
+// 배포: CORS_ORIGIN 환경변수에 Vercel URL 설정, 로컬: 모두 허용
+const corsOrigin = process.env.CORS_ORIGIN;
+app.use(cors(corsOrigin ? { origin: corsOrigin } : {}));
 app.use(express.json());  
 
 

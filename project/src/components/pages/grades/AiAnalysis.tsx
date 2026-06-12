@@ -1,4 +1,5 @@
-
+﻿
+import { API_BASE } from '../../../api';
 import { useState, useEffect } from 'react';
 import { TrendingUp, AlertCircle, BarChart2, FileText,
          RefreshCw, Lightbulb, KeyRound, Sparkles, MapPin,
@@ -60,7 +61,7 @@ function AiAnalysis() {
   // 마운트 시 저장된 분석 결과 자동 로드
   useEffect(() => {
     const token = localStorage.getItem('token') || '';
-    fetch('http://localhost:3000/api/ai/saved', {
+    fetch(`${API_BASE}/api/ai/saved`, {
       headers: { Authorization: 'Bearer ' + token },
     })
       .then(r => r.ok ? r.json() : null)
@@ -97,7 +98,7 @@ function AiAnalysis() {
       const params = new URLSearchParams({ lang: aiLang });
       if (question.trim()) params.append('question', question.trim());
 
-      const res = await fetch(`http://localhost:3000/api/ai/analyze?${params}`, {
+      const res = await fetch(`${API_BASE}/api/ai/analyze?${params}`, {
         headers: {
           Authorization: 'Bearer ' + token,
           'x-ai-key': apiKey,
@@ -572,3 +573,6 @@ function AiAnalysis() {
 }
 
 export default AiAnalysis;
+
+
+

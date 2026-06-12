@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '../../../api';
 import { useState, useEffect } from 'react';
 import { Eye, Heart } from 'lucide-react';
 import { timeAgo } from './dashHelper';
@@ -30,7 +31,7 @@ function CommunityPreview({ onGoToBoard }:
   async function loadPosts() {
     try {
       // 게시판 back 연결
-      const res = await fetch('http://localhost:3000/api/board?page=0&sort=latest');
+      const res = await fetch(`${API_BASE}/api/board?page=0&sort=latest`);
       const data = await res.json();
 
       setPosts(data.content ?? []);
@@ -111,3 +112,5 @@ function CommunityPreview({ onGoToBoard }:
 }
 
 export default CommunityPreview;
+
+

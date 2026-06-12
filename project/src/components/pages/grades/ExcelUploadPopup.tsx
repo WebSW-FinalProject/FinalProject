@@ -1,4 +1,5 @@
-
+﻿
+import { API_BASE } from '../../../api';
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
@@ -38,7 +39,7 @@ function ExcelUploadPopup({ open, onSuccess, onClose }: Props) {
       fd.append('file', file);
 
       // back api : api/grade/parse (성적 업로드 : API명세서)
-      const res = await fetch('http://localhost:3000/api/grade/parse', {
+      const res = await fetch(`${API_BASE}/api/grade/parse`, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token },
         body: fd,
@@ -135,3 +136,6 @@ function ExcelUploadPopup({ open, onSuccess, onClose }: Props) {
 }
 
 export default ExcelUploadPopup;
+
+
+

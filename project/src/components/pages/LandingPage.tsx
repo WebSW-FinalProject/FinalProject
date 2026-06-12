@@ -1,4 +1,5 @@
-
+﻿
+import { API_BASE } from '../../api';
 import Logo from '../logo.tsx';
 import { useState } from 'react';
 import { BarChart3, CalendarDays, MessageSquareText } from 'lucide-react';
@@ -41,8 +42,8 @@ function LandingPage({ onLogin }: Props) {
 
     // login | register 구분
     const url = mode === 'login'
-      ? 'http://localhost:3000/api/auth/login'
-      : 'http://localhost:3000/api/auth/register';
+      ? `${API_BASE}/api/auth/login`
+      : `${API_BASE}/api/auth/register`;
 
     const body = mode === 'login'
       ? { email: form.email,  password: form.password }
@@ -263,3 +264,6 @@ function LandingPage({ onLogin }: Props) {
 }
 
 export default LandingPage;
+
+
+

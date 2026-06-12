@@ -1,3 +1,4 @@
+﻿import { API_BASE } from '../../../api';
 import { useState, useEffect, useRef } from 'react';
 import { useGradeData } from '../../../hooks/useGradeData';
 import { useLang } from '../../../LangContext';
@@ -27,7 +28,7 @@ function Credits() {
   async function loadCerts() {
     const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('http://localhost:3000/api/graduation/status', {
+      const res = await fetch(`${API_BASE}/api/graduation/status`, {
         headers: { Authorization: 'Bearer ' + token },
       });
       if (res.ok) setCertItems(await res.json());
@@ -54,7 +55,7 @@ function Credits() {
   async function saveCerts(items: CertItem[]) {
     const token = localStorage.getItem('token') || '';
     try {
-      const res = await fetch('http://localhost:3000/api/graduation/status', {
+      const res = await fetch(`${API_BASE}/api/graduation/status`, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -503,3 +504,6 @@ function Credits() {
 }
 
 export default Credits;
+
+
+

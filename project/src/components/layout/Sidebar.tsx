@@ -1,8 +1,9 @@
-
+﻿
 import { useState, useEffect } from 'react';
 import type { Section, Page } from '../../hooks/useNavigation';
 import type { GradesSummary } from '../pages/grades/Dashboard';
 import { useLang } from '../../LangContext';
+import { API_BASE } from '../../api';
 
 import {
   LayoutGrid, Activity, Calendar, HelpCircle,
@@ -51,7 +52,7 @@ function Sidebar({ section, page, goTo, setPage,
     async function loadEvents() {
       try {
         const token = localStorage.getItem('token') || '';
-        const res = await fetch('http://localhost:3000/api/schedule', {
+        const res = await fetch(`${API_BASE}/api/schedule`, {
           headers: { Authorization: 'Bearer ' + token },
         });
         const data = await res.json();
@@ -259,3 +260,6 @@ function Sidebar({ section, page, goTo, setPage,
 }
 
 export default Sidebar;
+
+
+

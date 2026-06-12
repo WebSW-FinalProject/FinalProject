@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Semester } from '../types';
+import { API_BASE } from '../api';
 
-const BASE = 'http://localhost:3000/api';
+const BASE = `${API_BASE}/api`;
 
 function authHeaders() {
   const token = localStorage.getItem('token');
@@ -10,7 +11,7 @@ function authHeaders() {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
-function authHeadersFormData() {
+function authHeadersFormData(): Record<string, string> {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }

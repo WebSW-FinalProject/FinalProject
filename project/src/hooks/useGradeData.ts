@@ -1,7 +1,8 @@
-﻿ import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import type { Semester, Course, GraduationRequirement } from '../types';
+import { API_BASE } from '../api';
 
-const BASE = 'http://localhost:3000/api';
+const BASE = `${API_BASE}/api`;
 
 function authHeaders() {
   const token = localStorage.getItem('token');

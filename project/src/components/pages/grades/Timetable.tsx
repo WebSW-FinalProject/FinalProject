@@ -1,4 +1,5 @@
-
+﻿
+import { API_BASE } from '../../../api';
 import { useState, useEffect } from 'react';
 import { LayoutGrid, PlusCircle, Trash2 } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
@@ -176,7 +177,7 @@ function Timetable() {
     async function loadBlocks() {
       try {
         const token = localStorage.getItem('token') || '';
-        const res = await fetch('http://localhost:3000/api/timetable', {
+        const res = await fetch(`${API_BASE}/api/timetable`, {
           headers: { Authorization: 'Bearer ' + token },
         });
         if (!res.ok) return; 
@@ -224,7 +225,7 @@ function Timetable() {
             continue;
           }
 
-          const res = await fetch('http://localhost:3000/api/timetable', {
+          const res = await fetch(`${API_BASE}/api/timetable`, {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + token,
                       'Content-Type': 'application/json' },
@@ -269,7 +270,7 @@ function Timetable() {
     async function deleteBlock(id: number) {
       try {
         const token = localStorage.getItem('token') || '';
-        await fetch(`http://localhost:3000/api/timetable/${id}`, {
+        await fetch(`${API_BASE}/api/timetable/${id}`, {
           method: 'DELETE',
           headers: { Authorization: 'Bearer ' + token },
         });
@@ -290,7 +291,7 @@ function Timetable() {
       try {
         const token = localStorage.getItem('token') || '';
       
-        const res = await fetch('http://localhost:3000/api/schedule', {
+        const res = await fetch(`${API_BASE}/api/schedule`, {
           headers: { Authorization: 'Bearer ' + token },
         });
         const data = await res.json();
@@ -310,7 +311,7 @@ function Timetable() {
       if (!evForm.title || !evForm.date) return;
       try {
         const token = localStorage.getItem('token') || '';
-        await fetch('http://localhost:3000/api/schedule', {
+        await fetch(`${API_BASE}/api/schedule`, {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + token, 
                     'Content-Type': 'application/json' },
@@ -337,7 +338,7 @@ function Timetable() {
     async function deleteEvent(id: number) {
       try {
         const token = localStorage.getItem('token') || '';
-        await fetch(`http://localhost:3000/api/schedule/${id}`, {
+        await fetch(`${API_BASE}/api/schedule/${id}`, {
           method: 'DELETE',
           headers: { Authorization: 'Bearer ' + token },
         });
@@ -850,3 +851,6 @@ function Timetable() {
 }
 
 export default Timetable;
+
+
+

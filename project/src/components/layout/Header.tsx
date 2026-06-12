@@ -1,4 +1,5 @@
-
+﻿
+import { API_BASE } from '../../api';
 import Logo from '../logo.tsx';
 import { useState } from 'react';
 import type { Section } from '../../hooks/useNavigation';
@@ -164,7 +165,7 @@ function Header({ section, goTo, isDark, setDark,
                     onClick={async () => {
                       if (!window.confirm(t('withdrawConfirm'))) return;
                       const token = localStorage.getItem('token') || '';
-                      await fetch('http://localhost:3000/api/users', {
+                      await fetch(`${API_BASE}/api/users`, {
                         method: 'DELETE',
                         headers: { Authorization: 'Bearer ' + token },
                       });
@@ -222,3 +223,6 @@ function Header({ section, goTo, isDark, setDark,
 }
 
 export default Header;
+
+
+

@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import type { GradesSummary } from './components/pages/grades/Dashboard';
 import { getCurrentSem } from './components/pages/grades/dashConnectAPI';
 import { calcGpa } from './components/pages/grades/dashHelper';
+import { API_BASE } from './api';
 
 
 function App() {
@@ -51,7 +52,7 @@ function App() {
       const token = localStorage.getItem('token') || '';
       const hdr = { Authorization: 'Bearer ' + token };
 
-      const semsRes = await fetch('http://localhost:3000/api/semesters', { headers: hdr });
+      const semsRes = await fetch(`${API_BASE}/api/semesters`, { headers: hdr });
       if (!semsRes.ok) return;
       const sems: any[] = await semsRes.json();
       if (!sems.length) return;
@@ -59,12 +60,12 @@ function App() {
       // 모든 학기 과목 fetch
       const allCourses: any[] = [];
       for (const s of sems) {
-        const r = await fetch(`http://localhost:3000/api/semesters/${s.id}/courses`, { headers: hdr });
+        const r = await fetch(`${API_BASE}/api/semesters/${s.id}/courses`, { headers: hdr });
         if (r.ok) allCourses.push(...(await r.json()));
       }
 
       // 졸업요건 fetch
-      const gradRes = await fetch('http://localhost:3000/api/graduation', { headers: hdr });
+      const gradRes = await fetch(`${API_BASE}/api/graduation`, { headers: hdr });
       const gradReqs: any[] = gradRes.ok ? await gradRes.json() : [];
 
       // avgGPA: semesters.gpa 컬럼 대신 courses에서 직접 계산 (s.gpa 가 null인 경우 대응)
@@ -97,7 +98,7 @@ function App() {
   async function loadUser() {
     try {
       const token = localStorage.getItem('token') || '';
-      const res = await fetch('http://localhost:3000/api/users/mypage', {
+      const res = await fetch(`${API_BASE}/api/users/mypage`, {
         headers: { Authorization: 'Bearer ' + token },
       });
       if (!res.ok) return;
@@ -171,3 +172,4 @@ function App() {
 }
 
 export default App;
+

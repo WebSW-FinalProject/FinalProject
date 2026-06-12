@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import type { Semester, Course } from '../../../types';
 import { calcGpa } from './dashHelper';
 import type { GradReq } from './dashHelper';
+import { API_BASE } from '../../../api';
 
-const BASE = 'http://localhost:3000/api'; // 백엔드 공통 경로
+const BASE = `${API_BASE}/api`; // 백엔드 공통 경로
 
 // JSON body 요청 공통 헤더
 function authHdr(token: string) {
