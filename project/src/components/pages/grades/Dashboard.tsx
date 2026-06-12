@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, CheckCircle2, Calendar } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
+import { API_BASE } from '../../../api';
 import ExcelUploadPopup from './ExcelUploadPopup';
 import CommunityPreview from './CommunityPreview';
 import { useDashConnect, getCurrentSem } from './dashConnectAPI';
@@ -257,7 +258,7 @@ function Dashboard(
     async function loadPercentile() {
       try {
         const token = localStorage.getItem('token') || '';
-        const res = await fetch('http://localhost:3000/api/users/mypage', {
+        const res = await fetch(`${API_BASE}/api/users/mypage`, {
           headers: { Authorization: 'Bearer ' + token },
         });
         if (!res.ok) return;
@@ -314,7 +315,7 @@ function Dashboard(
     async function loadDashBlocks() {
       try {
         const token = localStorage.getItem('token') || '';
-        const res = await fetch('http://localhost:3000/api/timetable', {
+        const res = await fetch(`${API_BASE}/api/timetable`, {
           headers: { Authorization: 'Bearer ' + token },
         });
         if (!res.ok) return;

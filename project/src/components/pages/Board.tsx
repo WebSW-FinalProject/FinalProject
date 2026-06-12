@@ -56,7 +56,10 @@ function getCat(category: string) {
   return CATEGORIES.DAILY;
 }
 
-const BASE = 'http://localhost:3000/api/board';
+import { API_BASE } from '../../api';
+const BASE = API_BASE + '/api/board';
+//  배포 시 VITE_API_BASE 환경변수로 서버 주소 설정
+//const BASE = 'http://localhost:3000/api/board';
 //  로컬host로 해둬야 서버 켰을 때 제대로 호출됨 (하드코딩, 배포CK)
 
 function authHeader(): Record<string, string> {
