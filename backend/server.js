@@ -62,6 +62,12 @@ app.use('/api/grade', authMiddleware, gradeRouter);
 const courseRouter = require('./src/routes/courseRouter');
 app.use('/api/semesters/:semester_id/courses', authMiddleware, courseRouter);
 
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const coursePlanRouter = require('./src/routes/coursePlanRouter');
+app.use('/api/course-plan', authMiddleware, coursePlanRouter);
+
 
 // 졸업 라우터 수정
 // (GET /, GET /requirements, GET /status, 
