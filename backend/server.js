@@ -41,9 +41,9 @@ const authMiddleware = require('./authMiddleware');
 app.get('/api/users/mypage', authMiddleware, async (req, res) => {
   const [rows] = await pool.query(
     `SELECT id, email, username, target_gpa, department,
-     grade_year, enroll_date FROM users WHERE id = ?`,
+     grade_year, enroll_date, percentile FROM users WHERE id = ?`,
     [req.user.id]
-  ); // 미들웨어에 학과, 학년 정보 추가 (프로필 정보)
+  ); // 미들웨어에 학과, 학년, 백분율 정보 추가 (프로필 정보)
   res.json(rows[0]);
 });
 

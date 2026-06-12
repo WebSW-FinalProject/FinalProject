@@ -39,7 +39,7 @@ function Header({ section, goTo, isDark, setDark,
 
         {/* 로고 */}
         <button onClick={() => goTo('grades')} 
-                className="flex items-center gap-1 shrink-0 text-(--accent)">
+                className="cursor-pointer flex items-center gap-1 shrink-0 text-(--accent)">
           <Logo/>
           <span className="text-2xl tracking-tight font-black text-(--accent)"
                 style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
@@ -58,7 +58,7 @@ function Header({ section, goTo, isDark, setDark,
                   ? 'border-(--text-1) text-(--text-1) font-bold'
                   : 'border-transparent text-(--text-2) hover:text-(--text-1)'
                 }`}>
-              <div className="whitespace-nowrap">{item.label}</div>
+              <div className="whitespace-nowrap cursor-pointer">{item.label}</div>
             </button>
           ))}
         </nav>
@@ -70,13 +70,15 @@ function Header({ section, goTo, isDark, setDark,
                           font-medium text-(--text-2) mr-2">
             <button onClick={() => setLang('KOR')}
                     className={currentLang === 'KOR' 
-                    ? 'text-(--text-1) font-bold' : 'hover:text-(--text-1)'}>
+                    ? 'cursor-pointer text-(--text-1) font-bold' 
+                    : 'cursor-pointer hover:text-(--text-1)'}>
               KOR
             </button>
             <span className="mx-1 text-(--border)">|</span>
             <button onClick={() => setLang('ENG')}
                     className={currentLang === 'ENG' 
-                    ? 'text-(--text-1) font-bold' : 'hover:text-(--text-1)'}>
+                    ? 'cursor-pointer text-(--text-1) font-bold' 
+                    : 'cursor-pointer hover:text-(--text-1)'}>
               ENG
             </button>
           </div>
@@ -85,7 +87,7 @@ function Header({ section, goTo, isDark, setDark,
             {/* 다크모드 토글 */}
             <button
               onClick={() => setDark(!isDark)}
-              className="w-8.5 h-8.5 rounded-lg flex items-center justify-center
+              className="w-8.5 h-8.5 rounded-lg flex items-center justify-center cursor-pointer
                         text-(--text-2) hover:bg-(--surface-2) transition-colors">
               {isDark ? <Sun size={16}/> : <Moon size={16}/>}
             </button>
@@ -93,21 +95,21 @@ function Header({ section, goTo, isDark, setDark,
             {/* 설정 */}
             <button
               onClick={() => setSettings(true)}
-              className="w-8.5 h-8.5 rounded-lg flex items-center justify-center
+              className="w-8.5 h-8.5 rounded-lg flex items-center justify-center cursor-pointer
                         text-(--text-2) hover:bg-(--surface-2) transition-colors">
               <Settings size={16}/>
             </button>
 
             {/* 프로필 & 프로필 드롭다운 */}
-            <div className="relative ml-1">
+            <div className="relative ml-1"> 
               {/* 바깥 클릭 시 닫기 */}
               {profileOpen && (
-                <div className="fixed inset-0 z-150" onClick={() => setProfile(false)}/>
+                <div className="fixed inset-0 z-150 cursor-pointer" onClick={() => setProfile(false)}/>
               )}
 
               <button
                 onClick={() => setProfile(!profileOpen)}
-                className="w-7.5 h-7.5 rounded-lg bg-(--navy) text-white
+                className="w-7.5 h-7.5 rounded-lg bg-(--navy) text-white cursor-pointer
                           text-[11px] font-bold flex items-center justify-center">
                 {username?.charAt(0) || 'G'}
               </button> {/* 실제 username 첫글자 가져오기(없으면 Guest) */}
@@ -143,15 +145,15 @@ function Header({ section, goTo, isDark, setDark,
                   ].map(item => (
                     <button key={item.label}
                             onClick={item.action}
-                            className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px]
+                            className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px] cursor-pointer
                                       text-(--text-2) hover:bg-(--surface-2) transition-colors">
                       {item.icon} {item.label}
                     </button>
-                  ))} {/* 도움말 = 소개 혹은 다른거로 대체.. */}
+                  ))} 
                   <div className="h-px bg-(--border) mx-1 my-1"/>
                   <button onClick={onLogout}
-                          className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px]
-                                    text-(--alert-warn) hover:bg-(--alert-warn-bg)/40 transition-colors">
+                          className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px] cursor-pointer
+                                    text-(--alert-warn)  hover:bg-(--surface-2) transition-colors">
                     <LogOut size={13}/> 로그아웃
                   </button> {/* 로그아웃 연결 */}
                   <button
@@ -164,8 +166,8 @@ function Header({ section, goTo, isDark, setDark,
                       });
                       onLogout?.();
                     }}
-                    className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px]
-                               text-red-400 hover:bg-red-500/10 transition-colors">
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-[12px] cursor-pointer
+                               text-red-500 hover:bg-(--surface-2) transition-colors">
                     <Trash2 size={13}/> 회원 탈퇴
                   </button>
                 </div>

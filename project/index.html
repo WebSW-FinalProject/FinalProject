@@ -5,9 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>project</title>
+    
+    <!-- 로드 전 다크모드 상태이면 미리 적용 => 새로고침 번쩍임 방지 -->
+    <script>
+      if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

@@ -38,6 +38,10 @@ async function parseAndSave(filePath, userId) {
   try {
     await conn.beginTransaction();
 
+    // 재업로드 기존데이터 전부 삭제 후 재삽입 (데이터 누적 => replace)
+    await conn.query('DELETE FROM semesters WHERE user_id = ?', [userId]);
+    await conn.query('DELETE FROM graduation_requirements WHERE user_id = ?', [userId]);
+
     for (const sem of Object.values(semesterMap)) {
       const [semResult] = await conn.query(
         `INSERT INTO semesters (user_id, semester_year, term)
@@ -81,11 +85,12 @@ async function parseAndSave(filePath, userId) {
       );
     }
 
-    // 학과, 학년(프로필 정보) 존재하면 저장 (엑셀 업로드 시 갱신)
-    if (parsed.department || parsed.gradeYear) {
+    // 학과, 학년, 백분위(프로필 정보) 존재하면 저장 (엑셀 업로드 시 갱신)
+    if (parsed.department || parsed.gradeYear || parsed.percentile != null) {
       await conn.query(
-        `UPDATE users SET department=?, grade_year=? WHERE id=?`,
-        [parsed.department || null, parsed.gradeYear || null, userId]
+        `UPDATE users SET department=?, grade_year=?, percentile=? WHERE id=?`,
+        [parsed.department || null, parsed.gradeYear || null,
+         parsed.percentile ?? null, userId]
       );
     }
 

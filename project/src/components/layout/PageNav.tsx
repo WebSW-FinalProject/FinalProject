@@ -23,7 +23,7 @@ function PageNav({ page, setPage }: PageNavProps) {
         <button
           key={t.id}
           onClick={() => setPage(t.id)}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md cursor-pointer
                       text-[13px] font-medium transition-colors whitespace-nowrap
             ${page === t.id
               ? 'bg-(--surface-2) text-(--text-1) font-bold'
@@ -31,7 +31,7 @@ function PageNav({ page, setPage }: PageNavProps) {
             }`}
          >
           {t.icon}
-          {t.label}
+          <div className="cursor-pointer"> {t.label} </div>
         </button>
       ))}
     </nav>

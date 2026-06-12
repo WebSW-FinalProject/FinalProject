@@ -1,4 +1,4 @@
-
+import { createPortal } from 'react-dom';
 
 interface PopupProps {
   open: boolean;
@@ -20,17 +20,21 @@ function Popup({ open, onClose, children, width = '400px' }: PopupProps) {
 
   if (!open) return null; // 이미 열려있을 경우 겹치지 않도록 방지..
 
-  return (
+  // 팝업 위치가 새로 추가한 animation 등에 의해 고정되지 않는 문제 해결
+  // createPortal  : doc.body 기준으로 컴포넌트 렌더링 (+ fixed로 중간에 고정.)
+  return createPortal(
     <div
-      className="fixed inset-0 z-900 flex items-center justify-center
-                  overflow-y-auto popup-scroll px-4 py-10"
+      className="fixed inset-0 z-9999 flex items-center justify-center px-4 py-10"
       style={{ background: 'rgba(0,0,0,.38)', backdropFilter: 'blur(2px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-(--surface) rounded-2xl overflow-hidden w-full"
-           style={{ maxWidth: width, boxShadow: '0 8px 40px rgba(0,0,0,.22)' }}>
+      <div className="bg-(--surface) rounded-2xl overflow-hidden w-full
+                      overflow-y-auto popup-scroll"
+           style={{ maxWidth: width, maxHeight: 'calc(100vh - 80px)',
+                    boxShadow: '0 8px 40px rgba(0,0,0,.22)' }}>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -1,6 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Section, Page } from '../../hooks/useNavigation';
+import type { GradesSummary } from '../pages/grades/Dashboard';
 
 import {
   LayoutGrid, Activity, Calendar, HelpCircle,
@@ -13,6 +14,10 @@ interface SidebarProps {
   page: Page;
   goTo: (s: Section, p?: Page) => void;
   setPage: (p: Page) => void;
+  username: string;
+  deptLabel: string;
+  gradesSummary?: GradesSummary | null; 
+  // Dash 정보 Sidebar 전달 (props로 전파:App.tsx)
 }
 
 
@@ -24,18 +29,47 @@ const gradeNav = [
   { id: 'ai'        as Page, label: 'AI 성적분석', Icon: HelpCircle  },
 ];
 
-// 일정 추가와 연동.. (임시, 하드코딩)
-const EVENTS = [
-  { label: '자료구조 중간고사', date: '5/28 · D-3', color: '#EF4444'          },
-  { label: '알고리즘 과제',     date: '6/1 · D-7',  color: 'var(--accent)'    },
-  { label: '영어회화 발표',     date: '6/8 · D-14', color: 'var(--bar-track)' },
-];
+// D-day 계산 (Timetable.tsx 참조)
+function calcDday(dateStr: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+// D-day 값에 따라 색상 결정
+function getDdayColor(dday: number) {
+  if (dday <= 3)  return 'var(--alert-warn)';
+  if (dday <= 7)  return 'var(--accent)';
+  return 'var(--bar-track)';
+}
 
 
 
-function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
+function Sidebar({ section, page, goTo, setPage, 
+                   username, deptLabel, gradesSummary }: SidebarProps) {
   
   const [collapsed, setCollapsed] = useState(false);
+
+  // 다가오는 일정 — /api/schedule 연결 (Timetable.tsx ref)
+  const [events, setEvents] = useState<any[]>([]);
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch('http://localhost:3000/api/schedule', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const data = await res.json();
+        setEvents(data.map((ev: any) => ({
+          ...ev,
+          event_date: ev.event_date ? String(ev.event_date).slice(0, 10) : ev.event_date,
+        })));
+      } 
+      catch (e) { console.error('일정 로드 실패:', e); }
+    }
+    loadEvents();
+  }, []);
   const isActive = (p: Page) => section === 'grades' && page === p;
   // 
 
@@ -56,16 +90,16 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
                   w-12 ${!collapsed ? 'lg:w-48 lg:px-1.5' : ''}`}>
       {/* 사이드바는 접혔을 때 넓이 없애서 화면 키워도 미니 바로 유지! */}
 
-      {/* 프로필 (임시, 하드코딩) */}
+      {/* 프로필 연결 @ (header.tsx 동일) */}
       <div className={`flex items-center gap-2 px-1 py-3 mb-1
                        ${!collapsed ? 'lg:justify-start' : ''} justify-center`}>
         <div className="w-8 h-8 rounded-lg bg-(--navy) text-white
                         flex items-center justify-center text-xs font-bold shrink-0">
-          이
+          {username.charAt(0)}
         </div>
         <div className={`min-w-0 ${txt}`}> {/* txt로 숨겨짐! */}
-          <p className="text-[12px] font-bold text-(--text-1) truncate">이문세</p>
-          <p className="text-[9px] text-(--text-3) truncate">소프트웨어학부 3학년</p>
+          <p className="text-[12px] font-bold text-(--text-1) truncate">{username}</p>
+          <p className="text-[9px] text-(--text-3) truncate">{deptLabel}</p>
         </div>
       </div>
 
@@ -81,7 +115,7 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
           title={label}
           className={`flex items-center gap-2 w-full rounded-[7px]
                       text-[11px] font-medium transition-colors
-                      justify-center px-0 py-2
+                      justify-center mb-1 cursor-pointer
                       ${!collapsed ? 'lg:justify-start lg:px-2 lg:py-1.5' : ''}
                       ${isActive(id)
                         ? 'bg-(--accent-bg) text-(--accent) font-bold'
@@ -104,7 +138,7 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
         title="게시판"
         className={`flex items-center gap-2 w-full rounded-[7px]
                     text-[12px] font-medium transition-colors
-                    justify-center px-0 py-2.5
+                    justify-center px-0 py-2.5 cursor-pointer
                     ${!collapsed ? 'lg:justify-start lg:px-2.5 lg:py-2' : ''}
                     ${section === 'board'
                       ? 'bg-(--accent-bg) text-(--accent) font-bold'
@@ -126,7 +160,7 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
         title="수강신청"
         className={`flex items-center gap-2 w-full rounded-[7px]
                     text-[12px] font-medium transition-colors
-                    justify-center px-0 py-2.5
+                    justify-center px-0 py-2.5 cursor-pointer
                     ${!collapsed ? 'lg:justify-start lg:px-2.5 lg:py-2' : ''}
                     ${section === 'courses'
                       ? 'bg-(--accent-bg) text-(--accent) font-bold'
@@ -146,16 +180,23 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
         <div className="px-2.5 flex flex-col gap-1 mb-1">
           <div className="flex justify-between text-[11px]">
             <span className="text-(--text-3)">누적 GPA</span>
-            <b className="text-(--text-1)">4.0</b>
+            <b className="text-(--text-1)">
+              {gradesSummary ? gradesSummary.avgGPA.toFixed(2) : '-'}
+            </b>
           </div>
           <div className="flex justify-between text-[11px]">
             <span className="text-(--text-3)">이번 학기</span>
-            <b className="text-(--text-1)">13 cr</b>
+            <b className="text-(--text-1)">
+              {gradesSummary ? gradesSummary.currentCredits + ' cr' : '-'}
+            </b>
           </div>
           <div className="h-1 rounded-full bg-(--bar-track) my-1 overflow-hidden">
-            <div className="h-full rounded-full bg-(--bar)" style={{ width: '57%' }} />
+            <div className="h-full rounded-full bg-(--bar)"
+                 style={{ width: (gradesSummary?.gradPct ?? 0) + '%' }} />
           </div>
-          <p className="text-[9px] text-(--text-3)">졸업학점 80 / 140 (57%)</p>
+          <p className="text-[9px] text-(--text-3)">
+            졸업학점 {gradesSummary ? `${gradesSummary.earnedTotal} / ${gradesSummary.gradTotal || 140} (${gradesSummary.gradPct}%)` : '- / -'}
+          </p>
         </div>
 
 
@@ -165,23 +206,32 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
           다가오는 일정
         </p>
         <div className="flex flex-col gap-0.5 mb-2">
-          {EVENTS.map(ev => (
-            <div key={ev.label}
-                 className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg
-                            cursor-pointer hover:bg-(--surface-2) transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0"
-                    style={{
-                      background: ev.color,
-                      border: ev.color === 'var(--bar-track)' 
-                              ? '1px solid var(--border)' 
-                              : 'none'
-                    }} />
-              <div>
-                <p className="text-[11px] font-semibold text-(--text-1)">{ev.label}</p>
-                <p className="text-[10px] text-(--text-3)">{ev.date}</p>
+          {events.slice(0, 4).map(ev => { 
+            // 시간표 탭 일정 정보 연결 (같은 로직)
+            const dday = calcDday(ev.event_date);
+            const color = getDdayColor(dday);
+            const d = new Date(ev.event_date + 'T00:00:00');
+            const dateLabel = `${d.getMonth()+1}/${d.getDate()} · D-${dday}`;
+            return (
+              <div key={ev.id}
+                   className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg m-0.5
+                              cursor-pointer hover:bg-(--surface-2) transition-colors">
+                <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0"
+                      style={{
+                        background: color,
+                        border: dday > 7 ? '1px solid var(--border)' : 'none'
+                        // 7일 초과면 색 구분 어려우니 boarder 추가 ..
+                      }} />
+                <div>
+                  <p className="text-[11px] font-semibold text-(--text-1)">{ev.title}</p>
+                  <p className="text-[10px] text-(--text-3)">{dateLabel}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {events.length === 0 && (
+            <p className="text-[10px] text-(--text-3) px-2.5 py-1">일정 없음</p>
+          )}
         </div>
       </div>
 
@@ -191,7 +241,7 @@ function Sidebar({ section, page, goTo, setPage }: SidebarProps) {
           onClick={() => setCollapsed(!collapsed)}
           className={`flex items-center gap-1.5 w-full px-2.5 py-2 rounded-[7px]
                       text-[11px] text-(--text-3) hover:bg-(--surface-2) 
-                      transition-colors
+                      transition-colors cursor-pointer
                       ${collapsed ? 'justify-center' : ''}`}>
           <ChevronsLeft
             size={14}

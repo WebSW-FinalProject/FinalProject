@@ -368,7 +368,7 @@ function Timetable() {
           <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-3.5">
 
             {/* ##A1 이번 학기 시간표 */}
-            <div className="bg-(--surface) rounded-xl border 
+            <div className="bg-(--surface) rounded-xl border card-enter
                             border-(--border) overflow-hidden pr-2"
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               {/* 시간표 헤더 */}
@@ -450,7 +450,7 @@ function Timetable() {
             </div>
 
             {/* ##A2 수강 과목 | 일정 */}
-            <div className="flex flex-col gap-2.5 h-full">
+            <div className="flex flex-col gap-2.5 h-full card-enter stagger-1">
 
               {/* ##A2-1 수강 과목 (main dash 참조) */}
               <div className="bg-(--surface) rounded-xl border 
@@ -533,7 +533,7 @@ function Timetable() {
                           md:grid-cols-[1.3fr_1fr] gap-6 m-4 items-start">
 
             {/* ##B1 새 일정 추가 폼(좌측 블럭) */}
-            <div className="bg-(--surface) rounded-xl border
+            <div className="bg-(--surface) rounded-xl border card-enter
                             border-(--border) overflow-hidden"
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <div className="px-4.5 py-3 border-b border-(--border)">
@@ -624,7 +624,7 @@ function Timetable() {
             </div>
 
             {/* ##B2 내 일정 목록 */}
-            <div className="bg-(--surface) rounded-xl border 
+            <div className="bg-(--surface) rounded-xl border card-enter stagger-1
                             border-(--border) overflow-hidden"
                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <div className="px-4.5 py-3 border-b border-(--border) 

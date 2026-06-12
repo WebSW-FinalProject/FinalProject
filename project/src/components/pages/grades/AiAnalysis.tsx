@@ -109,7 +109,7 @@ function AiAnalysis() {
       </div>
 
       {/* 요약 3카드 (강점, 개선, 졸업전망 => 백 구현하면서 재고하기) */}
-      <div className="grid md:grid-cols-3 gap-3 mb-4">
+      <div className="grid md:grid-cols-3 gap-3 mb-4 card-enter">
 
         <div className="bg-(--surface) rounded-xl border border-(--border) p-3.5"
              style={{ boxShadow:'var(--shadow-card)', 
@@ -167,7 +167,7 @@ function AiAnalysis() {
       <div className="grid grid-cols-1 sm:grid-cols-[1.3fr_1fr] gap-3.5 min-w-0">
 
         {/* #A 1열 : 학기별 GPA | AI 학습 전략 */}
-        <div className="flex flex-col gap-3.5 min-w-0 overflow-hidden">
+        <div className="flex flex-col gap-3.5 min-w-0 overflow-hidden card-enter stagger-1">
 
           {/* ##A-1 학기별 GPA 막대 차트 (mock 연결) */}
           <div className="bg-(--surface) rounded-xl border 
@@ -286,7 +286,7 @@ function AiAnalysis() {
         </div>
 
         {/* #B: AI 수강 추천 | 졸업 예측*/}
-        <div className="flex flex-col gap-3.5 min-w-0">
+        <div className="flex flex-col gap-3.5 min-w-0 card-enter stagger-2">
 
           {/* ##B-1 AI 수강 추천 */}
           <div className="bg-(--surface) rounded-xl border border-(--border)

@@ -6,8 +6,9 @@ USE UniguideDB;
 
 -- users
 -- id, email, pw(hash), username, enroll_date(가입일)
--- dash 연결 : target_gpa 추가 : 목표 학점(유저 직접 설정) DB연결 
+-- dash 연결 : target_gpa 추가 : 목표 학점(유저 직접 설정) DB연결
 -- header 연결 : department(학과), grade_year(학년) 추가: 프로필정보
+-- dash 연결 : percentile(백분위) 추가 : 엑셀 파싱 시 저장, 상위 % 표시용
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   email         VARCHAR(255)  NOT NULL,
@@ -15,7 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
   username      VARCHAR(80)   NOT NULL,
   target_gpa    DECIMAL(3,2)  NOT NULL DEFAULT 4.20,
   department    VARCHAR(60)   NULL,
-  grade_year    TINYINT       NULL,           
+  grade_year    TINYINT       NULL,
+  percentile    DECIMAL(5,2)  NULL,
   enroll_date   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_email (email)

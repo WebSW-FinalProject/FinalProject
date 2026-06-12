@@ -307,7 +307,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
       <div className="grid grid-cols-1 sm:grid-cols-[1.6fr_1fr] gap-6">
 
         {/* ## A-1 게시글 */}
-        <div>
+        <div className="card-enter">
           {/* 이번 주 화제글 */}
           <div className="bg-(--surface) rounded-xl border border-(--border) overflow-hidden mb-2.5 p-2"
                style={{ boxShadow:'var(--shadow-card)' }}>
@@ -383,7 +383,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
         </div>
 
         {/* ## A-2 Quick Access | Trending */}
-        <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-3.5 card-enter stagger-1">
 
           {/* Quick Access */}
           <div className="bg-(--surface) rounded-xl border border-(--border) overflow-hidden"
@@ -461,7 +461,7 @@ function Board({ initialPostId }: { initialPostId?: number | null }) {
       </div>
 
       {/* #B 전체 글 */}
-      <div className="mt-6 pt-5 border-t border-(--border)">
+      <div className="mt-6 pt-5 border-t border-(--border) card-enter stagger-2">
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
 
           <div className="flex items-center gap-2 flex-wrap">

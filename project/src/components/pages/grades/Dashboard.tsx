@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock, CheckCircle2, Calendar } from 'lucide-react';
 import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 import ExcelUploadPopup from './ExcelUploadPopup';
@@ -13,10 +13,41 @@ import {
 import gradeImg from '../../../assets/grade.png';
 
 
-// 엑셀 파일 재업로드 여부 받음.
-function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
+// 시간표 블럭 타입 + 색상 맵 (Timetable.tsx 와 동일 구조)
+type TimetableBlock = { 
+  id:number; col:number; grid_row:string; name:string; time:string; type:string
+ };
+
+const DASH_COLOR_KEYS = ['b', 'p', 'c', 'g', 'v', 'i', 'l', 'n'];
+
+function buildDashColorMap(blocks: TimetableBlock[]) {
+  const map: Record<string, string> = {};
+  let count = 0;
+  for (const b of blocks) {
+    if (!map[b.name]) { 
+      map[b.name] = DASH_COLOR_KEYS[count % DASH_COLOR_KEYS.length]; count++;
+     }
+  }
+  return map;
+}
+
+
+// Sidebar 요약용 타입 (App.tsx에서 gradesSummary state로 관리)
+export type GradesSummary = {
+  avgGPA: number;
+  currentCredits: number;
+  earnedTotal: number;
+  gradTotal: number;
+  gradPct: number;
+};
+
+// 엑셀 파일 재업로드 여부 받음 + App.tsx props로 정보 dash=>sidebar 이동
+function Dashboard(
+  { onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone, onSummaryChange }:
   { onGoTimetable?: () => void; onGoToBoard?: (postId?: number) => void;
-    reuploadOpen?: boolean; onReuploadDone?: () => void }) {
+    reuploadOpen?: boolean; onReuploadDone?: () => void;
+    onSummaryChange?: (s: GradesSummary) => void; }
+  ) {
 
   // 서버 데이터 + API 호출 (useDashConnect hook)
   const {
@@ -212,12 +243,33 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
   const maxGPA  = gpaList.length > 0 ? Math.max(...gpaList) : 0;
   const minGPA  = gpaList.length > 0 ? Math.min(...gpaList) : 0;
 
-  let avgGPA = 0; // 평균 학점 계산 
+  let avgGPA = 0; // 평균 학점 계산
   if (gpaList.length > 0) {
     let sum = 0;
     for (const i of gpaList) sum += i;
     avgGPA = sum / gpaList.length;
   } 
+
+  // 백분율 — mypage API: 엑셀 파싱값
+  const [percentile, setPercentile] = useState<number | null>(null);
+  
+  useEffect(() => {
+    async function loadPercentile() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch('http://localhost:3000/api/users/mypage', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.percentile != null) setPercentile(parseFloat(data.percentile));
+      }
+      catch (e) { console.error('백분위 로드 실패:', e); }
+    }
+    loadPercentile();
+  }, []);
+
+  const topPct = percentile !== null ? percentile.toFixed(1) : null;
 
 
   // 졸업요건 조회 헬퍼 (area 이름으로 required 값 찾기)
@@ -225,19 +277,55 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
     return gradReqs.find(r => r.area === area)?.required ?? 0;
   }
 
-  // 이수학점 계산
+  // 이수학점 계산 (Credits.tsx와 동일 로직)
+  const LIBERAL_AREAS = ['개신기초교양', '자연이공계기초과학', '일반교양', '확대교양'];
   const earnedTotal    = sumCredits(completedCourses);
   const majorEarned    = sumCredits(completedCourses.filter(c => c.division === '전공'));
-  const liberalEarned  = sumCredits(completedCourses.filter(c => c.division === '교양'));
+  const liberalEarned  = sumCredits(completedCourses.filter(c => c.area && LIBERAL_AREAS.includes(c.area)));
   const majorReqFil    = getReq('전공필수');
   const majorReqSel    = getReq('전공선택');
   const majorReqTotal  = majorReqFil + majorReqSel;
+  const liberalReqTotal = LIBERAL_AREAS.reduce((s, a) => s + getReq(a), 0); // DB 저장 area와 일치
   const gradTotal      = getReq('총졸업');
   const gradPct        = gradTotal > 0 ? Math.round(earnedTotal / gradTotal * 100) : 0;
+
+  // 데이터 로드 완료 시 Sidebar 요약 전달 (App.tsx => Sidebar)
+  // allCourses/gradReqs 바뀔 때마다 실행 (초기 로드 + 학기 완료 후 갱신)
+  useEffect(() => {
+    if (dataLoading) return;
+    onSummaryChange?.({
+      avgGPA,
+      currentCredits: sumCredits(currentCourses),
+      earnedTotal,
+      gradTotal,
+      gradPct,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCourses, gradReqs, dataLoading]);
 
   // 잔여학기 : 4년제 기준 8학기에서 완료학기 빼기
   const completedSems  = semestersWithGpa.filter(s => s.gpa !== null);
   const remainingSems  = Math.max(0, 8 - completedSems.length);
+
+  // 대시보드 시간표 미니뷰 — Timetable API 연결
+  const [dashBlocks, setDashBlocks] = useState<TimetableBlock[]>([]);
+
+  useEffect(() => {
+    async function loadDashBlocks() {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch('http://localhost:3000/api/timetable', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setDashBlocks(data);
+      } catch (e) { console.error('시간표 로드 실패:', e); }
+    }
+    loadDashBlocks();
+  }, []);
+  const dashColorMap = buildDashColorMap(dashBlocks);
+
 
   // 학점이수현황 — 교양 area별 이수학점 (동적 계산)
   const liberalAreaMap: Record<string, number> = {};
@@ -278,7 +366,7 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
     <div className="p-3.5 pb-15 w-full">
 
       {/* ## alert 섹션 (임시, 하드코딩) */}
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg card-enter
                       bg-(--accent-bg) border border-(--border) whitespace-nowrap
                       mb-3 text-xs text-(--text-2) ">
         <Clock size={11} className="text-(--accent) shrink-0" />
@@ -294,7 +382,7 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
       </div>
 
       {/* ## TOP 2열 구조 (메인 GPA + 졸업현황 블록) */}
-      <div className="flex flex-col sm:flex-row gap-2.5 mb-3.5">
+      <div className="flex flex-col sm:flex-row gap-2.5 mb-3.5 card-enter stagger-1">
 
         {/* GPA 메인 카드 */}
         <div className="flex-8 card p-3.5 min-w-0 overflow-hidden flex items-center
@@ -318,10 +406,12 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
                     {avgGPA > 0 ? avgGPA.toFixed(2) : '-.--'}
                   </span>
                   <span className="text-sm text-(--text-3)">/ 4.5</span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
-                                   bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
-                    상위 8.2%
-                  </span>
+                  {topPct !== null && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
+                                     bg-(--badge-neutral-bg) text-(--badge-neutral-text)">
+                      백분율 {topPct}%
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-3 text-[11px] text-(--text-2) flex-wrap">
                   <span>전공 <b className="text-(--text-1) tabular-nums">
@@ -350,12 +440,16 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
             <div className="flex gap-1.5 shrink flex-wrap">
               {/* 데이터 연결 필요 (임시, 하드코딩) */}
               {[
-                { label: '이수학점', value: String(earnedTotal),   sub: '/ ' + (gradTotal || 140),    barPct: gradPct || Math.round(earnedTotal / 140 * 100), badge: null },
-                { label: '전공',     value: String(majorEarned),  sub: '/ ' + (majorReqTotal || 85), barPct: null, badge: majorReqTotal > majorEarned ? (majorReqTotal - majorEarned) + ' 잔여' : '완료' },
-                { label: '교양',     value: String(liberalEarned), sub: '/ 42',                       barPct: null, badge: liberalEarned >= 42 ? '완료 ✓' : (42 - liberalEarned) + '학점 잔여' },
+                { label: '이수학점', value: String(earnedTotal),   sub: gradTotal ? '/ ' + gradTotal : '/ -',
+                  barPct: null, badge: gradTotal > earnedTotal ? (gradTotal - earnedTotal) + '학점 잔여' : gradTotal ? '완료 ✓' : '-' },
+                { label: '전공',     value: String(majorEarned),  sub: majorReqTotal ? '/ ' + majorReqTotal : '/ -',
+                  barPct: null, badge: majorReqTotal > majorEarned ? (majorReqTotal - majorEarned) + ' 잔여' : '완료' },
+                { label: '교양',     value: String(liberalEarned), sub: '/ ' + liberalReqTotal,
+                  barPct: null, badge: liberalEarned >= liberalReqTotal ? '완료 ✓' : (liberalReqTotal - liberalEarned) + '학점 잔여' },
                 { label: '목표 GPA', value: targetGpa.toFixed(1), sub: avgGPA > 0 ? '현재 ' + avgGPA.toFixed(2) : '-',
                   barPct: null,
-                  badge: avgGPA >= targetGpa ? '달성 ✓' : avgGPA >= targetGpa - 0.3 ? '달성 가능' : (targetGpa - avgGPA).toFixed(1) + ' 부족' },
+                  badge: avgGPA >= targetGpa ? '달성 ✓' : avgGPA >= targetGpa - 0.3 
+                                             ? '달성 가능' : (targetGpa - avgGPA).toFixed(1) + ' 부족' },
               ].map(box => (
 
                 <div key={box.label}
@@ -420,7 +514,7 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
                 {gradPct}%
               </span>
             </div>
-            <p className="text-[9px] text-(--text-3) mt-0.5">졸업 달성률</p>
+            <p className="text-[9px] text-(--text-3) mt-0.5">졸업 학점 달성률</p>
             <div className="h-1 rounded-full bg-(--bar-track) mt-2 mb-2.5 overflow-hidden">
               <div className="h-full rounded-full bg-(--bar)" style={{ width: gradPct + '%' }} />
             </div>
@@ -443,7 +537,7 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
 
 
       {/* ## 중간 부분 3열 구조 grid 구성 */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr] gap-3.5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr] gap-3.5 card-enter stagger-2">
 
         {/* #1열 : 학기별 성적 컴포넌트
             (* 내용이 많아 실제 데이터 연결하며 구조화 메모 필요) */}
@@ -1175,29 +1269,27 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
                   {['월','화','수','목','금'].map(d => <div key={d}>{d}</div>)}
                 </div>
 
-                {/* 시간표 데이터 - (임시, 하드코딩) */}
+                {/* 시간표 데이터 — Timetable API 연결
+                    DB col: 2~6(월~금), 대시보드 grid는 1~5이므로 col-1 로 조정 */}
                 <div className="grid gap-0.5 flex-1 min-h-45"
                     style={{ gridTemplateColumns: 'repeat(5,1fr)',
                               gridTemplateRows: 'repeat(8,1fr)' }}>
-                  {[
-                    { col:1, row:'1/3', name:'자료구조', time:'09:00', type:'b' },
-                    { col:1, row:'5/7', name:'영어회화', time:'13:00', type:'c' },
-                    { col:2, row:'3/5', name:'알고리즘', time:'11:00', type:'p' },
-                    { col:3, row:'1/3', name:'자료구조', time:'09:00', type:'b' },
-                    { col:3, row:'4/6', name:'이산수학', time:'12:00', type:'p' },
-                    { col:4, row:'3/5', name:'알고리즘', time:'11:00', type:'p' },
-                    { col:4, row:'6/8', name:'인성과윤리', time:'14:00', type:'g' },
-                    { col:5, row:'5/7', name:'영어회화', time:'13:00', type:'c' },
-                  ].map((b, i) => (
-                    <div key={i}
-                        className="rounded text-[10px] whitespace-nowrap
+                  {dashBlocks.length === 0 && (
+                    <div className="col-span-5 flex items-center justify-center
+                                    text-[10px] text-(--text-3)">
+                      등록된 수업 없음
+                    </div>
+                  )}
+                  {dashBlocks.map(b => (
+                    <div key={b.id}
+                        className="rounded-lg text-[10px] whitespace-nowrap
                                    leading-tight px-1.5 py-1"
                         style={{
-                          gridColumn: b.col,
-                          gridRow: b.row,
-                          background: `var(--timetable-${b.type}-bg)`,
-                          border: `1px solid var(--timetable-${b.type}-bd)`,
-                          color: `var(--timetable-${b.type}-text)`,
+                          gridColumn: b.col - 1,
+                          gridRow: b.grid_row,
+                          background: `var(--timetable-${dashColorMap[b.name]}-bg)`,
+                          border: `1px solid var(--timetable-${dashColorMap[b.name]}-bd)`,
+                          color: `var(--timetable-${dashColorMap[b.name]}-text)`,
                         }}>
                       <b>{b.name}</b><br/>
                       <span style={{ opacity: .7 }}>{b.time}</span>
@@ -1213,7 +1305,7 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
       </div>
 
       {/* ## 학점 이수 현황 (임시, 하드코딩) */}
-      <div className="bg-(--surface) rounded-xl border
+      <div className="bg-(--surface) rounded-xl border card-enter stagger-3
                       border-(--border) overflow-hidden mt-3.5"
            style={{ boxShadow: 'var(--shadow-card)' }}>
 
@@ -1226,19 +1318,12 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
             <span className="text-xl font-bold tabular-nums text-(--text-1)"
                   style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif",
                            letterSpacing: '-.01em' }}>{earnedTotal}</span>
-            <span className="text-[11px] text-(--text-3)">/ {gradTotal || 140} 학점</span>
+            <span className="text-[11px] text-(--text-3)">/ {gradTotal || '-'} 학점</span>
             <div className="w-20 h-1.5 rounded-full bg-(--bar-track) overflow-hidden">
               <div className="h-full rounded-full bg-(--bar)"
                    style={{ width: gradPct + '%' }}/>
             </div>
           </div>
-
-          { /* 편집 버튼 @ */ }
-          <button className="text-[10px] font-medium text-(--text-2)
-                            border border-(--border) px-2.5 py-1
-                            rounded-lg hover:bg-(--surface-2) transition-colors">
-            편집
-          </button>
         </div>
 
         <div className="p-4.5 flex flex-col gap-5">
@@ -1254,11 +1339,11 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                   {majorEarned}
                 </span>
-                <span className="text-[10px] text-(--text-3)">/ {majorReqTotal || 85} 학점</span>
+                <span className="text-[10px] text-(--text-3)">/ {majorReqTotal || '-'} 학점</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold
                                bg-(--warn-bg) text-(--warn-text) border border-(--border)">
-                {(majorReqTotal || 85) - majorEarned}학점 잔여
+                {majorReqTotal ? (majorReqTotal - majorEarned) + '학점 잔여' : '졸업요건 미설정'}
               </span>
             </div>
 
@@ -1298,12 +1383,12 @@ function Dashboard({ onGoTimetable, onGoToBoard, reuploadOpen, onReuploadDone }:
                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
                       &nbsp; {liberalEarned}
                 </span>
-                <span className="text-[10px] text-(--text-3)">/ 42 학점</span>
+                <span className="text-[10px] text-(--text-3)">/ {liberalReqTotal} 학점</span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold
                                bg-(--badge-neutral-bg) text-(--badge-neutral-text)
                                border border-(--border)">
-                {Math.max(0, 42 - liberalEarned)}학점 잔여
+                {Math.max(0, liberalReqTotal - liberalEarned)}학점 잔여
               </span>
 
             </div>

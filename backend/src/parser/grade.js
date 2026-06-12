@@ -74,6 +74,31 @@ module.exports = async function parseGradeReport(filePath) {
     }
   }
 
+  // 백분위 
+  let percentile = null;
+  for (let rn = 1; rn <= ws.rowCount; rn++) {
+    const row = uniqRow(ws, rn);
+    const idx = row.findIndex(([, v]) => {
+      const clean = v.replace(/\s/g, '');
+      return clean === '백분율' || clean === '환산백분율';
+    });
+    if (idx !== -1) {
+      // 같은 행 다음 셀
+      if (row[idx + 1]) {
+        const val = parseFloat(row[idx + 1][1]);
+        if (!isNaN(val)) { percentile = val; break; }
+      }
+      
+      // 다음 행 같은 열 위치
+      const labelCol = row[idx][0];
+      const nextRowVal = getVal(ws, rn + 1, labelCol);
+      if (nextRowVal) {
+        const val = parseFloat(nextRowVal);
+        if (!isNaN(val)) { percentile = val; break; }
+      }
+    }
+  }
+
   // 졸업기준학점, 이수학점, 전공기준
   let graduationRequired = null, totalEarned = null;
   let majorRequired = { required: null, elective: null };
@@ -219,7 +244,7 @@ for (let rn = 1; rn <= ws.rowCount; rn++) {
   }
 }
 
-return { studentId, name, department, gradeYear, gpa, 
-         graduationRequired, totalEarned, majorRequired, 
+return { studentId, name, department, gradeYear, gpa, percentile,
+         graduationRequired, totalEarned, majorRequired,
          liberalRequired, courses, enrolledCourses };
 };

@@ -9,14 +9,29 @@ export type Section = 'grades' | 'board' | 'courses';
 export type Page    = 'dashboard' | 'credits' | 'timetable' | 'ai';
 
 export function useNavigation() {
-  const [section, setSection] = useState<Section>('grades');
-  const [page, setPage] = useState<Page>('dashboard');
+
+  // 새로고침 후에도 페이지 유지 (localStorage)
+  const [section, setSection] = useState<Section>(
+    () => (localStorage.getItem('nav_section') as Section) ?? 'grades'
+  );
+  const [page, setPage] = useState<Page>(
+    () => (localStorage.getItem('nav_page') as Page) ?? 'dashboard'
+  );
 
   function goTo(s: Section, p?: Page) { // goTo (s메인탭, p서브탭) 꼴로 사용.
-    setSection(s); 
-    if (p) setPage(p); // page 는 null 일 수 있음. (p?)
-    else if (s === 'grades') setPage('dashboard');
+    const nextPage = p ?? (s === 'grades' ? 'dashboard' : page);
+    setSection(s);
+    setPage(nextPage);
+    localStorage.setItem('nav_section', s);
+    localStorage.setItem('nav_page', nextPage);
   }
 
-  return { section, page, goTo, setPage };
+  // setPage 직접 호출 시에도 localStorage 저장 (새로고침 유지)
+  function setPageWithSave(p: Page) {
+    setPage(p);
+    localStorage.setItem('nav_page', p);
+  }
+
+  return { section, page, goTo, setPage: setPageWithSave };
+  // 이름은 그냥 그대로 export (수정최소화..)
 }

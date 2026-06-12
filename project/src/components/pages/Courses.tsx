@@ -197,7 +197,7 @@ function Courses() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
 
         {/* ##A-1 표준이수모형 이미지 업로드 */}
-        <div className="flex-1 bg-(--surface) rounded-xl border
+        <div className="flex-1 bg-(--surface) rounded-xl border card-enter
                         border-(--border) overflow-hidden flex flex-col">
           <div className="px-3.5 py-2 border-b border-(--border) flex items-center justify-between">
             <span className="font-bold text-[13px] flex items-center gap-1.5">
@@ -270,7 +270,7 @@ function Courses() {
         <div className="grid grid-cols-1 gap-3">
 
           {/* ##B-1 메모 */}
-          <div className="bg-(--surface) rounded-xl border border-(--border)
+          <div className="bg-(--surface) rounded-xl border border-(--border) card-enter stagger-1
                           overflow-hidden flex flex-col"
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-4 py-3 border-b border-(--border)">
@@ -289,7 +289,7 @@ function Courses() {
           </div>
 
           {/* ##B-2 수강신청 목록 */}
-          <div className="bg-(--surface) rounded-xl border border-(--border) overflow-hidden"
+          <div className="bg-(--surface) rounded-xl border border-(--border) overflow-hidden card-enter stagger-2"
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-4 py-3 border-b border-(--border)
                             flex items-center justify-between">
@@ -368,7 +368,8 @@ function Courses() {
           </div>
 
           {/* ##B-3 수강 후 학점 변화 */}
-          <div className="bg-(--surface) rounded-xl border border-(--border) overflow-hidden"
+          <div className="bg-(--surface) rounded-xl border border-(--border) 
+                          overflow-hidden card-enter stagger-3"
                style={{ boxShadow: 'var(--shadow-card)' }}>
             <div className="px-3.5 py-2 border-b border-(--border)">
               <span className="font-bold text-[13px] flex items-center gap-1.5">

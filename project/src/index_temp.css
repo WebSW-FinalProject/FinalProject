@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* 라이트 모드 (뮤트 핑크 베이지) */
+:root {
+  --bg:         #FAF7F5;
+  --surface:    #FFFFFF;
+  --surface-2:  #F4F0EE;
+  --border:     #E8E1DE;
+  --text-1:     #4A403A;
+  --text-2:     #7A6E68;
+  --text-3:     #A89D98;
+  --bar:        #D6A4A4;        /* 뮤트 핑크 */
+  --bar-track:  #F4E8E8;
+  --accent:     #C98F8F;        /* 말린 장미색 */
+  --accent-bg:  #F8E8E8;
+  --navy:       #8C6F6F;        /* 다크 로즈 */
+  --inner-bg:   #F4F0EE;
+  --inner-bg-2: #FDFBFA;
+  --warn-bg:    #F8F0F0;
+  --warn-text:  #8C6F6F;
+  --alert-warn: #A36B6B;
+  --alert-border: #DBC8C8;
+  --alert-warn-bg: #FDF4F4;
+  --shadow:      0 2px 8px rgba(180,150,150,.1);
+  --shadow-card: 0 2px 14px rgba(180,150,150,.08), 0 0 0 1px rgba(180,150,150,.05);
+  
+  --rec-neutral-bg:    #F2E6E6;
+  --rec-neutral-text:  #8C6F6F;
+  --badge-neutral-bg:  #F0EBE9;
+  --badge-neutral-text: #786D68;
+  
+  --diff-easy-bg:    #F8F0F0; --diff-easy-text: #A36B6B;
+  --diff-hard-bg:    #F2E6E6; --diff-hard-text: #785A5A;
+  
+  --timetable-b-bg: #F5EBEB; --timetable-b-bd: #DBC8C8; --timetable-b-text: #8C6F6F;
+  --timetable-p-bg: #F8F3F3; --timetable-p-bd: #E8DEDE; --timetable-p-text: #7D6363;
+  --timetable-c-bg: #FDF9F9; --timetable-c-bd: #E8DEDE; --timetable-c-text: #8F7676;
+  --timetable-g-bg: #FAF5F5; --timetable-g-bd: #D6A4A4; --timetable-g-text: #695454;
+}
+
+/* 다크 모드 (다크 그레이시 핑크) */
+[data-theme="dark"] {
+  --bg:         #1C1919;
+  --surface:    #262323;
+  --surface-2:  #2D2828;
+  --border:     #403737;
+  --text-1:     #F2EBE9;
+  --text-2:     #A39592;
+  --text-3:     #665C5A;
+  --bar:        #C98F8F;
+  --bar-track:  #2D2828;
+  --accent:     #D6A4A4;
+  --accent-bg:  #3D3030;
+  --navy:       #D6A4A4;
+  --inner-bg:   #242020;
+  --inner-bg-2: #2D2828;
+  --warn-bg:    #3D3030;
+  --warn-text:  #E8DEDE;
+  --alert-warn:     #E8DEDE;
+  --alert-warn-bg:  #3D3030;
+  --alert-border:   #5C4D4D;
+  --shadow:      0 4px 16px rgba(0,0,0,.4);
+  --shadow-card: 0 1px 4px rgba(0,0,0,.4), 0 0 0 1px rgba(200,160,160,.05);
+  
+  --rec-neutral-bg:    #3D3030;
+  --rec-neutral-text:  #DBC8C8;
+  --badge-neutral-bg:  #2D2828;
+  --badge-neutral-text: #968885;
+  
+  --diff-easy-bg:    #3D3030; --diff-easy-text: #E8DEDE;
+  --diff-hard-bg:    #523D3D; --diff-hard-text: #D6A4A4;
+  
+  --timetable-b-bg: #2D2828; --timetable-b-bd: #4A3D3D; --timetable-b-text: #DBC8C8;
+  --timetable-p-bg: #332B2B; --timetable-p-bd: #5C4D4D; --timetable-p-text: #E8DEDE;
+  --timetable-c-bg: #383030; --timetable-c-bd: #6E5C5C; --timetable-c-text: #D6A4A4;
+  --timetable-g-bg: #403737; --timetable-g-bd: #8C6F6F; --timetable-g-text: #C98F8F;
+}
+/* 나머지 스크롤바 코드는 동일 */

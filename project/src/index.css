@@ -98,6 +98,26 @@ textarea::-webkit-scrollbar { width: 4px; }
 textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 textarea::-webkit-scrollbar-track { background: transparent; }
 
+
+/* 애니메이션 추가 (AI 도움) */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes card-entrance {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter  { animation: page-in      .28s cubic-bezier(.22,.68,0,1.2) both; }
+.card-enter  { animation: card-entrance .32s cubic-bezier(.22,.68,0,1.2) both; }
+
+.stagger-1 { animation-delay:  50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+
+
+
 /* 자동 완성 시 배경색 변경 방지 (브라우저가 바꾸는거 방지)*/
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

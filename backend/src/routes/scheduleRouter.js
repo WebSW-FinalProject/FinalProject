@@ -11,12 +11,14 @@ const pool    = require('../db/connection');
 router.get('/', async (req, res, next) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, title, event_date, event_time, type, memo
+      `SELECT id, title, DATE_FORMAT(event_date, '%Y-%m-%d')
+       AS event_date, event_time, type, memo
        FROM schedule_events
        WHERE user_id = ? AND event_date >= CURDATE()
        ORDER BY event_date, event_time`,
       [req.user.id]
-    );
+    ); 
+    // 일정 추가 시 날짜 오차 수정 (mysql2 드라이버 관련문제)
 
     res.json(rows);
   } 
