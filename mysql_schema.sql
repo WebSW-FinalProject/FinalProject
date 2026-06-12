@@ -175,3 +175,38 @@ CREATE TABLE IF NOT EXISTS timetable_blocks (
   PRIMARY KEY (id),
   CONSTRAINT fk_blocks_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- course_plan_items (수강신청 계획 과목 목록)
+-- courses 테이블(이미 이수한 과목)과 별개로 "이번 학기 신청 예정" 과목 관리
+-- is_enrolled: 1=담김, 0=담기 / sort_order: 드래그 순서
+-- FK: user_id => users(id), semester_id => semesters(id), CASCADE
+CREATE TABLE IF NOT EXISTS course_plan_items (
+  id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  user_id     INT UNSIGNED  NOT NULL,
+  semester_id INT UNSIGNED  NOT NULL,
+  name        VARCHAR(100)  NOT NULL,
+  category    VARCHAR(20)   NOT NULL DEFAULT '전공필수',
+  professor   VARCHAR(50)   NULL,
+  credit      SMALLINT      NOT NULL DEFAULT 3,
+  is_enrolled TINYINT(1)    NOT NULL DEFAULT 1,
+  sort_order  SMALLINT      NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_plan_items_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_plan_items_sem  FOREIGN KEY (semester_id) REFERENCES semesters(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- course_plan_meta (수강신청 계획 메타 - 메모 + 표준이수모형 이미지)
+-- user당 학기당 1행 (UNIQUE KEY로 중복 방지)
+-- FK: user_id => users(id), semester_id => semesters(id), CASCADE
+CREATE TABLE IF NOT EXISTS course_plan_meta (
+  id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  user_id     INT UNSIGNED  NOT NULL,
+  semester_id INT UNSIGNED  NOT NULL,
+  memo        TEXT          NULL,
+  image_path  VARCHAR(255)  NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_plan_meta (user_id, semester_id),
+  CONSTRAINT fk_plan_meta_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_plan_meta_sem  FOREIGN KEY (semester_id) REFERENCES semesters(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
