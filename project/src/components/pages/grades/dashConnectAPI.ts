@@ -253,6 +253,20 @@ export function useDashConnect() {
     }
   }
 
+  // #3 과목 삭제 (DELETE /api/semesters/:id/courses/:courseId)
+  async function deleteCourse(semId: number, courseId: number): Promise<void> {
+    const token = localStorage.getItem('token') || '';
+    try {
+      await fetch(`${BASE}/semesters/${semId}/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      loadData();
+    } catch (e) {
+      console.error('과목 삭제 실패:', e);
+    }
+  }
+
   // #3 기존 과목 수정 (PUT /api/semesters/:id/courses/:courseId)
   // 성공 시 true : Dashboard에서 editCourseId 초기화
   async function saveCourseEdit(
@@ -342,6 +356,7 @@ export function useDashConnect() {
     deleteSemester,
     saveSemester,
     addCourseToSemester,
+    deleteCourse,
     saveCourseEdit,
     completeSemester,
     saveTargetGpa,

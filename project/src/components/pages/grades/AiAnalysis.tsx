@@ -350,10 +350,10 @@ function AiAnalysis() {
             )}
 
             <div className="bg-(--surface) rounded-xl border border-(--border) p-3.5"
-                 style={{ boxShadow:'var(--shadow-card)', borderLeft:'3px solid var(--navy)' }}>
+                 style={{ boxShadow:'var(--shadow-card)', borderLeft:'3px solid var(--rec-neutral-text)' }}>
               <div className="flex items-center gap-1.5 mb-2">
-                <BarChart2 size={14} style={{ color:'var(--navy)' }}/>
-                <span className="text-[11px] font-bold" style={{ color:'var(--navy)' }}>
+                <BarChart2 size={14} style={{ color:'var(--rec-neutral-text)' }}/>
+                <span className="text-[11px] font-bold" style={{ color:'var(--rec-neutral-text)' }}>
                   {t('aiGraduation')}
                 </span>
               </div>

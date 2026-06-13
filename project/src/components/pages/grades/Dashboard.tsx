@@ -5,7 +5,7 @@ import Popup, { PopupHeader, PopupFooter } from '../../ui/Popup';
 import { API_BASE } from '../../../api';
 import ExcelUploadPopup from './ExcelUploadPopup';
 import CommunityPreview from './CommunityPreview';
-import { useDashConnect, getCurrentSem } from './dashConnectAPI';
+import { useDashConnect } from './dashConnectAPI';
 import { useLang } from '../../../LangContext';
 import {
   GRADE_SCALE, GRADES, semLabel, toChartY, getChartXs,
@@ -66,6 +66,7 @@ function Dashboard(
     deleteSemester,
     saveSemester:        save_Semester,
     addCourseToSemester: add_Course,
+    deleteCourse:        delete_Course,
     saveCourseEdit:      save_CourseEdit,
     completeSemester:    complete_Semester,
     saveTargetGpa:       save_TargetGpa,
@@ -171,22 +172,16 @@ function Dashboard(
     return { ...s, gpa, dbGpa: s.gpa, courses }; 
   });
 
-  // 오늘날짜
-  //  => 현재 학기 계산 (getCurrentSem: dashConnectAPI.ts import)
-  const { year: todayYear, term: todayTerm } = getCurrentSem();
-
-
-  // 오늘날짜 기준으로 학기 찾기
-  //  => 없으면 null-gpa 중 가장 최근 => 없으면 마지막
-  let currentSem = semestersWithGpa.find(s => s.semester_year 
-                      === todayYear && s.term === todayTerm);
-  if (!currentSem) {
-    currentSem = [...semestersWithGpa].reverse()
-                  .find(s => s.dbGpa === null);
-  }
-  if (!currentSem) {
-    currentSem = semestersWithGpa[semestersWithGpa.length - 1];
-  }
+  // 현재 학기 선택: gpa=null이고 성적 입력된 과목이 하나도 없는 학기 중 가장 최신
+  // (완료 버튼 안 누른 학기만, 이미 성적 입력된 학기는 제외)
+  const ungradedSems = semestersWithGpa.filter(s => {
+    if (s.dbGpa !== null) return false;
+    const semCourses = allCourses.filter(c => c.semester_id === s.id);
+    return semCourses.every(c => !c.grade); // DB에 grade 저장된 과목 없음
+  });
+  const currentSem = ungradedSems.length > 0
+    ? ungradedSems[ungradedSems.length - 1] // 정렬 순 마지막 = 가장 최신
+    : null;
   
 
   // 현학기(currentSem)의 모든 과목이 이번 학기 수강 과목
@@ -779,7 +774,7 @@ function Dashboard(
 
             {/* 학기 블럭 : API 데이터 */}
             {semestersWithGpa.map((sem) => {
-              const isCurrent  = sem.id === currentSem?.id; // id로 비교 — gpa=null 학기 중복 방지
+              const isCurrent  = currentSem !== null && sem.id === currentSem.id;
               const isOpen     = expandedSems.includes(sem.id); // 열려있는지 확인 (expandedSems search)
               const semCourses = sem.courses; // grade null 포함 — 신규 추가 과목도 표시
                                 // 각 강의들 중 현재 탐색중인 학기의 과목들 catch ..
@@ -813,35 +808,37 @@ function Dashboard(
                                 ${isCurrent ? 'bg-(--accent-bg) hover:bg-(--surface-2)'
                                             : 'hover:bg-(--surface-2)'}`} >
 
-                    <div className="flex items-center gap-3.5">
+                    <div className="flex items-center gap-3.5 min-w-0">
                       {isCurrent ? (
                         <>
-                          <span className="w-14 text-[11px] font-bold text-(--accent)">{semLabel(sem, t)}</span>
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold
-                                          bg-(--badge-neutral-bg) text-(--badge-neutral-text)">{t('dashCurrentSem')}</span>
-                          <span className="text-[10px] text-(--text-3)">
-                            {sem.courses.length}{t('dashSubjectUnit')} · {sumCredits(sem.courses)}{t('dashCreditsUnit')} · {t('dashPending')}
-                          </span>
+                          <span className="w-14 text-[11px] font-bold text-(--accent) shrink-0">{semLabel(sem, t)}</span>
+                          <div className="min-w-0">
+                            <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap
+                                            bg-(--badge-neutral-bg) text-(--badge-neutral-text)">{t('dashCurrentSem')}</span>
+                            <p className="text-[9px] text-(--text-3) mt-0.5 whitespace-nowrap">
+                              {sem.courses.length}{t('dashSubjectUnit')} · {sumCredits(sem.courses)}{t('dashCreditsUnit')} · {t('dashPending')}
+                            </p>
+                          </div>
                         </>
                       ) : (
                         <>
                           <span className="w-14 text-[11px] font-bold text-(--text-3)">{semLabel(sem, t)}</span>
-                          <span className="text-lg font-bold tabular-nums text-(--text-1) leading-none"
-                                style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-                            {sem.gpa?.toFixed(1)} {/* toFixed : 소수점 n자리까지 보여줌. */}
-                          </span>
-                          <span className="text-[10px] text-(--text-3)">/4.5</span>
+                          <div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-bold tabular-nums text-(--text-1) leading-none"
+                                    style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
+                                {sem.gpa?.toFixed(1)}
+                              </span>
+                              <span className="text-[10px] text-(--text-3)">/4.5</span>
+                            </div>
+                            <div className="flex gap-2.5 text-[9px] text-(--text-3) mt-0.5">
+                              <span>{t('dashLiberal')} <b className="text-(--text-2)">{libGPA}</b></span>
+                              <span>{t('dashMajor')} <b className="text-(--text-2)">{majorGPA}</b></span>
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>
-
-                    {/* 완료 학기만 교양/전공 GPA 표시 */}
-                    {!isCurrent && (
-                      <div className="flex items-center gap-3.5 text-[11px] text-(--text-2)">
-                        <span>{t('dashLiberal')} <b>{libGPA}</b></span>
-                        <span>{t('dashMajor')} <b>{majorGPA}</b></span>
-                      </div>
-                    )}
 
                     <div className="flex items-center gap-2">
                       {/* 학기 삭제 버튼 */}
@@ -915,12 +912,13 @@ function Dashboard(
                               ) : (
                                 // notion 필기 참조!
                                 <div key={c.id}
-                                    className="grid items-center gap-1.5 px-2 py-1
+                                    className="grid items-center gap-1.5 px-2.5 py-1.5
                                                bg-(--inner-bg) rounded-lg group"
-                                    style={{ gridTemplateColumns: '1fr 36px 70px 22px' }}>
+                                    style={{ gridTemplateColumns: '10px 1fr 32px 64px 18px 16px' }}>
 
-                                  <span className="text-[11px] font-medium text-(--text-1)">{c.name}</span>
-                                  <span className="text-[10px] text-(--text-3) text-right">{c.credit}cr</span>
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor(c.category ?? '')}`} />
+                                  <span className="text-[11px] font-medium text-(--text-1) truncate">{c.name}</span>
+                                  <span className="text-[10px] text-(--text-3) text-right whitespace-nowrap">{c.credit}cr</span>
 
                                   <select
                                     value={grades[c.id] ?? ''}
@@ -928,12 +926,13 @@ function Dashboard(
                                        ...prev,
                                        [c.id]: e.target.value
                                     }))}
-                                    className="text-[11px] bg-(--surface) border border-(--border)
-                                               rounded px-1 py-0.5
-                                              text-(--text-1) cursor-pointer focus:outline-none" >
+                                    className={`text-[11px] rounded-lg px-1.5 py-0.5 border
+                                               cursor-pointer focus:outline-none transition-colors
+                                               ${grades[c.id]
+                                                 ? 'bg-(--accent-bg) border-(--accent) text-(--accent) font-semibold'
+                                                 : 'bg-(--surface) border-(--border) text-(--text-3)'}`}>
 
                                     <option value="">-</option>
-
                                     {GRADES.map(g => <option key={g}>{g}</option>)}
 
                                   </select>
@@ -944,8 +943,16 @@ function Dashboard(
                                       setEditCourseData({ name: c.name, category: c.category || '전공필수', credit: String(c.credit), grade: c.grade || '' });
                                     }}
                                     className="text-[9px] text-(--text-3) hover:text-(--text-1)
-                                               opacity-0 group-hover:opacity-100 transition-opacity">
+                                               opacity-0 group-hover:opacity-100 transition-opacity text-center">
                                     {t('edit')}
+                                  </button>
+
+                                  <button
+                                    onClick={() => delete_Course(sem.id, c.id)}
+                                    className="text-(--text-3) hover:text-red-400
+                                               opacity-0 group-hover:opacity-100 transition-opacity
+                                               text-[15px] leading-none text-center">
+                                    ×
                                   </button>
 
                                 </div>
@@ -1053,6 +1060,13 @@ function Dashboard(
                                             className="text-[9px] text-(--text-3) hover:text-(--text-1)
                                                        opacity-0 group-hover:opacity-100 transition-opacity">
                                             {t('edit')}
+                                          </button>
+                                          <button
+                                            onClick={() => delete_Course(sem.id, c.id)}
+                                            className="text-(--text-3) hover:text-red-400
+                                                       opacity-0 group-hover:opacity-100 transition-opacity
+                                                       text-[13px] leading-none">
+                                            ×
                                           </button>
                                         </div>
                                       </div>
