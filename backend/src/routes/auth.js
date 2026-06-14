@@ -50,8 +50,8 @@ router.post('/register', async (req, res) => {
 
         res.status(201).json({ message: '회원가입 성공'});
     }
-    catch{
-        console.log("server error");
+    catch(err){
+        console.error("register error:", err.message);
         res.status(500).json({message: '500 server error'})
     }
   
@@ -92,8 +92,8 @@ router.post('/login', async (req, res) => {
 
     return res.status(200).json({ message: '로그인 성공!', token: token });
   }
-  catch {
-    console.log("server error");
+  catch(err) {
+    console.error("login error:", err.message);
     res.status(500).json({message: '500 server error'})
   }
 
