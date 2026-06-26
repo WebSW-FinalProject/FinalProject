@@ -1,7 +1,7 @@
 ﻿import { API_BASE } from '../../api';
 import { useState, useRef } from 'react';
 import { LayoutGrid, StickyNote, ListChecks, GripVertical,
-         BarChart2, ChevronRight, X, Upload } from 'lucide-react';
+         BarChart2, ChevronRight, X, Upload, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import Popup, { PopupHeader } from '../ui/Popup';
 import { useGradeData }    from '../../hooks/useGradeData';
 import { useCoursesData }  from '../../hooks/useCoursesData';
@@ -95,8 +95,43 @@ function Courses() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imgDragOver, setImgDragOver] = useState(false);
 
+  // 이미지 줌/팬 state
+  const [imgZoom, setImgZoom] = useState(1);
+  const [imgPan,  setImgPan]  = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragOrigin = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
+
+  function handleWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.15 : -0.15;
+    setImgZoom(z => {
+      const next = Math.min(5, Math.max(1, z + delta));
+      if (next === 1) setImgPan({ x: 0, y: 0 });
+      return next;
+    });
+  }
+
+  function handleImgMouseDown(e: React.MouseEvent) {
+    if (imgZoom <= 1) return;
+    e.preventDefault();
+    setDragging(true);
+    dragOrigin.current = { mx: e.clientX, my: e.clientY, px: imgPan.x, py: imgPan.y };
+  }
+
+  function handleImgMouseMove(e: React.MouseEvent) {
+    if (!dragging || !dragOrigin.current) return;
+    const dx = (e.clientX - dragOrigin.current.mx) / imgZoom;
+    const dy = (e.clientY - dragOrigin.current.my) / imgZoom;
+    setImgPan({ x: dragOrigin.current.px + dx, y: dragOrigin.current.py + dy });
+  }
+
+  function stopDrag() { setDragging(false); dragOrigin.current = null; }
+
+  function resetZoom() { setImgZoom(1); setImgPan({ x: 0, y: 0 }); }
+
   async function handleImageFile(file: File) {
     if (!file.type.startsWith('image/')) return;
+    resetZoom();
     await uploadImage(file);
   }
 
@@ -216,19 +251,41 @@ function Courses() {
       )}
 
       {/* #A 표준이수모형 | 오른쪽 섹션들 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 min-h-155">
 
         {/* ##A-1 표준이수모형 이미지 업로드 */}
         <div className="flex-1 bg-(--surface) rounded-xl border card-enter
-                        border-(--border) overflow-hidden flex flex-col">
+                        border-(--border) overflow-hidden flex flex-col min-h-145">
           <div className="px-3.5 py-2 border-b border-(--border) flex items-center justify-between">
             <span className="font-bold text-[13px] flex items-center gap-1.5">
               <LayoutGrid size={14} className="text-(--accent)" /> {t('coursesCurriculum')}
             </span>
+            {/* 줌 컨트롤 — 이미지 있을 때만 표시 */}
+            {meta.image_path && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => setImgZoom(z => Math.min(5, z + 0.25))}
+                        className="p-1 rounded hover:bg-(--surface-2) text-(--text-3) transition-colors">
+                  <ZoomIn size={13}/>
+                </button>
+                <span className="text-[10px] text-(--text-3) tabular-nums w-8 text-center">
+                  {Math.round(imgZoom * 100)}%
+                </span>
+                <button onClick={() => setImgZoom(z => Math.max(1, z - 0.25))}
+                        className="p-1 rounded hover:bg-(--surface-2) text-(--text-3) transition-colors">
+                  <ZoomOut size={13}/>
+                </button>
+                {imgZoom > 1 && (
+                  <button onClick={resetZoom}
+                          className="p-1 rounded hover:bg-(--surface-2) text-(--accent) transition-colors">
+                    <RotateCcw size={12}/>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 이미지 영역 */}
-          <div className="p-3 flex-1">
+          <div className="p-3 flex-1 min-h-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -237,27 +294,54 @@ function Courses() {
               onChange={e => {
                 const file = e.target.files?.[0];
                 if (file) handleImageFile(file);
-                e.target.value = ''; 
+                e.target.value = '';
               }}
             />
 
             {meta.image_path ? (
-              /* 이미지가 있으면 표시 */
-              <div className="relative w-full h-full group">
+              /* 이미지가 있으면 줌/팬 표시 */
+              <div
+                className="relative w-full h-full overflow-hidden rounded-lg select-none group"
+                style={{ cursor: imgZoom > 1 ? (dragging ? 'grabbing' : 'grab') : 'default' }}
+                onWheel={handleWheel}
+                onMouseDown={handleImgMouseDown}
+                onMouseMove={handleImgMouseMove}
+                onMouseUp={stopDrag}
+                onMouseLeave={stopDrag}
+              >
                 <img
                   src={`${API_BASE}${meta.image_path}`}
                   alt={t('coursesCurriculum')}
-                  className="w-full h-full object-contain rounded-lg"
+                  draggable={false}
+                  className="w-full h-full object-contain"
+                  style={{
+                    transform: `scale(${imgZoom}) translate(${imgPan.x}px, ${imgPan.y}px)`,
+                    transformOrigin: 'center center',
+                    transition: dragging ? 'none' : 'transform 0.12s ease',
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  }}
                 />
-                {/* 호버 시 재업로드 버튼 */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 flex flex-col items-center justify-center
-                             rounded-lg opacity-0 group-hover:opacity-100 transition-opacity
-                             bg-black/40 text-white text-[11px] gap-1">
-                  <Upload size={20}/>
-                  {t('coursesChangeImg')}
-                </button>
+                {/* 호버 시 재업로드 버튼 — 줌 1배일 때만 */}
+                {imgZoom === 1 && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute inset-0 flex flex-col items-center justify-center
+                               rounded-lg opacity-0 group-hover:opacity-100 transition-opacity
+                               bg-black/40 text-white text-[11px] gap-1">
+                    <Upload size={20}/>
+                    {t('coursesChangeImg')}
+                  </button>
+                )}
+                {/* 줌 힌트 */}
+                {imgZoom === 1 && (
+                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2
+                                   text-[9px] text-white/60 bg-black/30 px-2 py-0.5
+                                   rounded-full pointer-events-none opacity-0
+                                   group-hover:opacity-100 transition-opacity">
+                    스크롤로 확대
+                  </span>
+                )}
               </div>
             ) : (
               /* 이미지 없으면 업로드 영역 */
@@ -333,7 +417,9 @@ function Courses() {
               </div>
             </div>
 
-            <div className="p-2.5 flex flex-col gap-0.5 max-h-44 overflow-y-auto">
+            <div className="p-2.5 flex flex-col gap-0.5 max-h-44 overflow-y-auto
+                            [&::-webkit-scrollbar]:hidden"
+                 style={{ scrollbarWidth: 'none' }}>
               {planItems.length === 0 && (
                 <p className="text-[11px] text-(--text-3) text-center py-4">
                   {t('coursesEmpty')}
