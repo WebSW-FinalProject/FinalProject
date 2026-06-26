@@ -99,7 +99,7 @@ export function sumCredits(courses: any[]) {
   return total;
 }
 
-// 과목 배열 => GPA 계산 
+// 과목 배열 => GPA 계산
 export function calcGpa(courses: any[]) {
   let totalPoints = 0;
   let totalCredits = 0;
@@ -111,4 +111,10 @@ export function calcGpa(courses: any[]) {
   }
   if (totalCredits === 0) return null;
   return totalPoints / totalCredits;
+}
+
+// GPA 표시 포맷: 소수점 2자리 절사 (반올림X) — 예: 3.6666 => "3.66"
+export function fmtGpa(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return (Math.floor(v * 100) / 100).toFixed(2);
 }

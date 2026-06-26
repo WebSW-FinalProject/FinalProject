@@ -72,6 +72,13 @@ function Courses() {
     name: '', category: '전공필수', professor: '', credit: '3',
   });
 
+  async function handleEnrollAll() {
+    const unenrolled = planItems.filter(c => Number(c.is_enrolled) !== 1);
+    for (const c of unenrolled) {
+      await toggleEnroll(c.id, c.is_enrolled);
+    }
+  }
+
   async function handleAddCourse() {
     if (!newCourse.name.trim()) return;
     await addPlanItem({
@@ -294,7 +301,7 @@ function Courses() {
               value={meta.memo}
               onChange={e => saveMemo(e.target.value)}
               placeholder={t('coursesTitle') + '...'}
-              className="flex-1 min-h-10 px-3 py-2 text-[11px] resize-none bg-(--surface)
+              className="flex-1 min-h-25 px-3 py-2 text-[11px] resize-none bg-(--surface)
                          border-none text-(--text-2) placeholder:text-(--text-3)
                          focus:outline-none leading-relaxed"
             />
@@ -308,15 +315,25 @@ function Courses() {
               <span className="font-bold text-[13px] flex items-center gap-1.5">
                 <ListChecks size={14} className="text-(--accent)" /> {t('coursesSemList')}
               </span>
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="text-[10px] font-semibold px-2.5 py-1 rounded-lg
-                           bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
-                {t('add')}
-              </button>
+              <div className="flex items-center gap-1.5">
+                {planItems.some(c => Number(c.is_enrolled) !== 1) && (
+                  <button
+                    onClick={handleEnrollAll}
+                    className="text-[10px] font-semibold px-2.5 py-1 rounded-lg
+                               border border-(--accent) text-(--accent) hover:bg-(--accent-bg) transition-colors">
+                    모두 담기
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="text-[10px] font-semibold px-2.5 py-1 rounded-lg
+                             bg-(--text-1) text-(--surface) hover:opacity-85 transition-opacity">
+                  {t('add')}
+                </button>
+              </div>
             </div>
 
-            <div className="p-2.5 flex flex-col gap-0.5">
+            <div className="p-2.5 flex flex-col gap-0.5 max-h-44 overflow-y-auto">
               {planItems.length === 0 && (
                 <p className="text-[11px] text-(--text-3) text-center py-4">
                   {t('coursesEmpty')}

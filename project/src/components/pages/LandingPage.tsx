@@ -17,6 +17,7 @@ function LandingPage({ onLogin }: Props) {
 
   const [error, setError] = useState(''); // form 에러메시지
   const [loading, setLoading] = useState(false); // 버튼 상태관리 (중복요청 방지)
+  const [rememberMe, setRememberMe] = useState(false); // 로그인 유지 (30일)
 
     
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -46,7 +47,7 @@ function LandingPage({ onLogin }: Props) {
       : `${API_BASE}/api/auth/register`;
 
     const body = mode === 'login'
-      ? { email: form.email,  password: form.password }
+      ? { email: form.email,  password: form.password,  rememberMe }
       : { email: form.email,  password: form.password,  username: form.username };
       // 회원가입의 경우 username 까지 받음.
 
@@ -151,6 +152,16 @@ function LandingPage({ onLogin }: Props) {
                                 placeholder:text-(--text-3) focus:outline-none 
                                 focus:border-(--accent) transition-colors"/>
             </div>
+
+            {/* 로그인 유지 (로그인 폼일 때만 표시) */}
+            {mode === 'login' && (
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={rememberMe}
+                     onChange={e => setRememberMe(e.target.checked)}
+                     className="w-3.5 h-3.5 accent-(--accent) cursor-pointer" />
+              <span className="text-[12px] text-(--text-3)">로그인 유지 <span className="text-[10px]">(30일)</span></span>
+            </label>
+            )}
 
             {/* 에러 메시지 */}
             {error && (

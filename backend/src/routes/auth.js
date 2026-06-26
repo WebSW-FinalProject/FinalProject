@@ -61,7 +61,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
 
   try{
-    const {email, password} = req.body;
+    const {email, password, rememberMe} = req.body;
     const [rows] = await pool.query(
         'SELECT id, email, password_hash, username FROM users WHERE email = ?',
         [email]
@@ -84,10 +84,12 @@ router.post('/login', async (req, res) => {
         return res.status(400).json({ message: '비밀번호가 일치하지 않습니다.' });
     }
 
+    // rememberMe: true => 30일, false => 24시간
+    const expiresIn = rememberMe ? '30d' : '24h';
     const token = jwt.sign(
-        { id: users.id, email: users.email }, 
-        process.env.JWT_SECRET,           
-        { expiresIn: '1h' }  // 토큰 유효시간 
+        { id: users.id, email: users.email },
+        process.env.JWT_SECRET,
+        { expiresIn }  // 토큰 유효시간
     );
 
     return res.status(200).json({ message: '로그인 성공!', token: token });

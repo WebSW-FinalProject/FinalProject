@@ -4,6 +4,7 @@ import type { Section, Page } from '../../hooks/useNavigation';
 import type { GradesSummary } from '../pages/grades/Dashboard';
 import { useLang } from '../../LangContext';
 import { API_BASE } from '../../api';
+import { fmtGpa } from '../pages/grades/dashHelper';
 
 import {
   LayoutGrid, Activity, Calendar, HelpCircle,
@@ -184,7 +185,7 @@ function Sidebar({ section, page, goTo, setPage,
           <div className="flex justify-between text-[11px]">
             <span className="text-(--text-3)">{t('sideCumGPA')}</span>
             <b className="text-(--text-1)">
-              {gradesSummary ? gradesSummary.avgGPA.toFixed(2) : '-'}
+              {gradesSummary ? fmtGpa(gradesSummary.avgGPA) : '-'}
             </b>
           </div>
           <div className="flex justify-between text-[11px]">

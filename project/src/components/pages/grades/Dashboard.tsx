@@ -9,7 +9,7 @@ import { useDashConnect } from './dashConnectAPI';
 import { useLang } from '../../../LangContext';
 import {
   GRADE_SCALE, GRADES, semLabel, toChartY, getChartXs,
-  gradeStyle, dotColor, sumCredits, calcGpa,
+  gradeStyle, dotColor, sumCredits, calcGpa, fmtGpa,
 } from './dashHelper';
 
 import gradeImg from '../../../assets/grade.png';
@@ -468,7 +468,7 @@ function Dashboard(
                 <div className="flex items-baseline gap-1.5 mb-1.5 flex-wrap">
                   <span className="text-[38px] font-bold text-(--accent) tabular-nums leading-none"
                         style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif", letterSpacing: '-.03em' }}>
-                    {avgGPA > 0 ? avgGPA.toFixed(2) : '-.--'}
+                    {avgGPA > 0 ? fmtGpa(avgGPA) : '-.--'}
                   </span>
                   <span className="text-sm text-(--text-3)">/ 4.5</span>
                   {topPct !== null && (
@@ -482,16 +482,16 @@ function Dashboard(
                   <span>{t('dashMajor')} <b className="text-(--text-1) tabular-nums">
                     {(() => {
                       const mc = allCourses.filter(c => c.division === '전공');
-                      return calcGpa(mc)?.toFixed(1) ?? '-';
+                      return fmtGpa(calcGpa(mc));
                     })()}
                   </b></span>
                   <span>{t('dashLiberal')} <b className="text-(--text-1) tabular-nums">
                     {(() => {
                       const lc = allCourses.filter(c => c.division === '교양');
-                      return calcGpa(lc)?.toFixed(1) ?? '-';
+                      return fmtGpa(calcGpa(lc));
                     })()}
                   </b></span>
-                  <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b>
+                  <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{fmtGpa(maxGPA)}</b>
                     <span className="text-[10px] text-(--text-3) ml-0.5">
                       ({chartSems[gpaList.indexOf(maxGPA)] ? semLabel(chartSems[gpaList.indexOf(maxGPA)], t) : '-'})
                     </span>
@@ -511,10 +511,10 @@ function Dashboard(
                   barPct: null, badge: majorReqTotal > majorEarned ? (majorReqTotal - majorEarned) + t('dashRemainShort') : t('dashDoneSimple') },
                 { label: t('dashLiberal'),   value: String(liberalEarned), sub: '/ ' + liberalReqTotal,
                   barPct: null, badge: liberalEarned >= liberalReqTotal ? t('dashDone') : (liberalReqTotal - liberalEarned) + t('dashRemainSuffix') },
-                { label: t('dashTargetGPA'), value: targetGpa.toFixed(1), sub: avgGPA > 0 ? t('dashCurrentPrefix') + avgGPA.toFixed(2) : '-',
+                { label: t('dashTargetGPA'), value: fmtGpa(targetGpa), sub: avgGPA > 0 ? t('dashCurrentPrefix') + fmtGpa(avgGPA) : '-',
                   barPct: null,
                   badge: avgGPA >= targetGpa ? t('dashAchieved') : avgGPA >= targetGpa - 0.3
-                                             ? t('dashAchievable') : (targetGpa - avgGPA).toFixed(1) + t('dashShortSuffix') },
+                                             ? t('dashAchievable') : fmtGpa(targetGpa - avgGPA) + t('dashShortSuffix') },
               ].map(box => (
 
                 <div key={box.label}
@@ -630,9 +630,9 @@ function Dashboard(
               <div className="flex justify-between items-center mb-2.5">
                 <span className="text-[11px] text-(--text-3)">{t('dashGpaTrend')}</span>
                 <div className="flex gap-4 text-[11px] text-(--text-3)">
-                  <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b></span>
-                  <span>{t('dashWorst')} <b className="tabular-nums">{minGPA.toFixed(1)}</b></span>
-                  <span>{t('dashAvg')} <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
+                  <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{fmtGpa(maxGPA)}</b></span>
+                  <span>{t('dashWorst')} <b className="tabular-nums">{fmtGpa(minGPA)}</b></span>
+                  <span>{t('dashAvg')} <b className="text-(--text-1) tabular-nums">{fmtGpa(avgGPA)}</b></span>
                 </div>
               </div>
 
@@ -694,7 +694,7 @@ function Dashboard(
                       fill={p.isPreview ? 'var(--accent)' : p.gpa === maxGPA ? 'var(--accent)' : 'var(--text-2)'}
                       fontWeight={p.gpa === maxGPA || p.isPreview ? 700 : 400}
                       fontFamily="Inter" opacity={p.isPreview ? 0.75 : 1}>
-                      {p.isPreview ? '~' + p.gpa.toFixed(1) : p.gpa.toFixed(1)}
+                      {p.isPreview ? '~' + fmtGpa(p.gpa) : fmtGpa(p.gpa)}
                     </text>
 
                     <text x={p.x} y={89} textAnchor="middle" fontSize={10}
@@ -760,7 +760,7 @@ function Dashboard(
                 ) : (
                   <>
                     <span>
-                      {t('dashHintAvg')}<b className="text-(--text-1)">{hintNeededGrade}</b>{t('dashHintOrAbove')}{targetGpa.toFixed(1)}{t('dashHintPossible')}
+                      {t('dashHintAvg')}<b className="text-(--text-1)">{hintNeededGrade}</b>{t('dashHintOrAbove')}{fmtGpa(targetGpa)}{t('dashHintPossible')}
                     </span>
                     <span className="ml-auto px-1.5 py-0.5 rounded-full text-[8px] font-semibold
                                     bg-(--accent-bg) text-(--accent) whitespace-nowrap shrink-0">
@@ -782,8 +782,8 @@ function Dashboard(
               // 교양/전공 GPA 계산 (학기 헤더 우측 표시용 — 완료 학기만)
               const libCourses   = sem.courses.filter((c: any) => c.division === '교양');
               const majorCourses = sem.courses.filter((c: any) => c.division === '전공');
-              const libGPA   = calcGpa(libCourses)?.toFixed(1)   ?? '-';
-              const majorGPA = calcGpa(majorCourses)?.toFixed(1) ?? '-';
+              const libGPA   = fmtGpa(calcGpa(libCourses));
+              const majorGPA = fmtGpa(calcGpa(majorCourses));
 
               // 이 학기에서 입력된 성적 수 (완료 버튼 표시 조건)
               const thisFilled = semCourses.filter((c: any) => grades[c.id]);
@@ -827,7 +827,7 @@ function Dashboard(
                             <div className="flex items-baseline gap-1">
                               <span className="text-lg font-bold tabular-nums text-(--text-1) leading-none"
                                     style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-                                {sem.gpa?.toFixed(1)}
+                                {fmtGpa(sem.gpa)}
                               </span>
                               <span className="text-[10px] text-(--text-3)">/4.5</span>
                             </div>
@@ -968,7 +968,7 @@ function Dashboard(
                               <div className="flex items-baseline gap-0.5">
                                 <span className="text-[17px] font-bold text-(--accent) tabular-nums"
                                       style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>
-                                  {thisExpectedGPA !== null ? thisExpectedGPA.toFixed(2) : '-.-'}
+                                  {thisExpectedGPA !== null ? fmtGpa(thisExpectedGPA) : '-.-'}
                                 </span>
                                 <span className="text-[10px] text-(--text-3)">/ 4.5</span>
                               </div>
@@ -977,9 +977,9 @@ function Dashboard(
                             {isCurrent && expectedTotalGpa !== null && (
                               <div className="border-t border-(--badge-neutral-bg) mt-1.5 pt-1.5
                                               flex gap-3.5 text-[11px] text-(--text-3)">
-                                <span>{t('dashAll')} <b className="text-(--text-1) tabular-nums">{expectedTotalGpa.toFixed(2)}</b></span>
-                                <span>{t('dashMajor')} <b className="text-(--text-1) tabular-nums">{expectedMajorGpa?.toFixed(2) ?? '-'}</b></span>
-                                <span>{t('dashLiberal')} <b className="text-(--text-1) tabular-nums">{expectedLiberalGpa?.toFixed(2) ?? '-'}</b></span>
+                                <span>{t('dashAll')} <b className="text-(--text-1) tabular-nums">{fmtGpa(expectedTotalGpa)}</b></span>
+                                <span>{t('dashMajor')} <b className="text-(--text-1) tabular-nums">{fmtGpa(expectedMajorGpa)}</b></span>
+                                <span>{t('dashLiberal')} <b className="text-(--text-1) tabular-nums">{fmtGpa(expectedLiberalGpa)}</b></span>
                               </div>
                             )}
                           </div>
@@ -1171,9 +1171,9 @@ function Dashboard(
                             text-[10px] text-(--text-3) whitespace-nowrap ">
               <span>{t('dashCompletedN')} <b className="text-(--text-2)">{chartSems.length}{t('dashSemUnit')}</b></span>
               <span>·</span>
-              <span>{t('dashAvg')} GPA <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(2)}</b></span>
+              <span>{t('dashAvg')} GPA <b className="text-(--text-1) tabular-nums">{fmtGpa(avgGPA)}</b></span>
               <span>·</span>
-              <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{maxGPA.toFixed(1)}</b>
+              <span>{t('dashBest')} <b className="text-(--accent) tabular-nums">{fmtGpa(maxGPA)}</b>
                 <span className="text-[9px] ml-0.5">
                   ({chartSems[gpaList.indexOf(maxGPA)] ? semLabel(chartSems[gpaList.indexOf(maxGPA)], t) : '-'})
                 </span>
@@ -1208,13 +1208,13 @@ function Dashboard(
                   <span className="text-[11px] text-(--text-3)">{t('dashTargetGPA')}</span>
                   <span className="text-xl font-bold text-(--accent) tabular-nums"
                         style={{ fontFamily: "'Bricolage Grotesque', Inter, sans-serif", letterSpacing: '-.02em' }}>
-                    {targetGpa.toFixed(1)}
+                    {fmtGpa(targetGpa)}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-[10px] text-(--text-2) mb-1">
-                  <span>{t('dashCurrentShort')} <b className="text-(--text-1) tabular-nums">{avgGPA.toFixed(1)}</b></span>
-                  <span>{t('dashTarget')} <b className="text-(--accent) tabular-nums">{targetGpa.toFixed(1)}</b></span>
+                  <span>{t('dashCurrentShort')} <b className="text-(--text-1) tabular-nums">{fmtGpa(avgGPA)}</b></span>
+                  <span>{t('dashTarget')} <b className="text-(--accent) tabular-nums">{fmtGpa(targetGpa)}</b></span>
                 </div>
 
                 <div className="h-3 rounded-full bg-(--bar-track) overflow-hidden">
@@ -1267,7 +1267,7 @@ function Dashboard(
                       <CheckCircle2 size={12} className="text-(--accent) shrink-0" />
                       <span className="text-[10px] text-(--text-2)">
                         {t('dashGoalResult')}&nbsp;
-                        <b className="text-(--accent)">{predicted.toFixed(2)}</b>
+                        <b className="text-(--accent)">{fmtGpa(predicted)}</b>
                         &nbsp;{predicted >= targetGpa ? t('dashGoalAchieved') : t('dashGoalMissed')}
                       </span>
                     </div>
