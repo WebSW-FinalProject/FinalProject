@@ -3,7 +3,7 @@
 > Please refer to the following materials during evaluation:
 >
 > - <a href="https://www.notion.so/WEB-PROJECT-35b5b90a1b9e8068a4d0dfb6fb2debe0?source=copy_link"><img src="https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white" alt="Notion" /></a> &nbsp;The API specification on GitHub is a draft. The final API specification — reflecting all changes made during development — and the testing details can be found at the Notion link. The `WEB PROJECT STUDY/DEV` page within Notion documents our learning notes.
-> - <a href="https://github.com/user-attachments/files/29049911/AI.pdf"><img src="https://img.shields.io/badge/Scope of AI Utilization-0A0A0A?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Scope of AI Utilization"></a> &nbsp;Specifies the scope and methods of AI utilization in the project.
+> - <a href="https://github.com/WebSW-FinalProject/FinalProject/blob/main/AI%EC%82%AC%EC%9A%A9%EB%B2%94%EC%9C%84.pdf"><img src="https://img.shields.io/badge/Scope of AI Utilization-0A0A0A?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Scope of AI Utilization"></a> &nbsp;Specifies the scope and methods of AI utilization in the project.
 
 ---
 
