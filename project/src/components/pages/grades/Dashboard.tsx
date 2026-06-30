@@ -720,11 +720,18 @@ function Dashboard(
               {(() => {
                 const graded = allCourses.filter(c => c.grade && GRADE_SCALE[c.grade] !== undefined);
                 const total  = graded.length;
-                const aPlus  = graded.filter(c => c.grade === 'A+').length;
-                const aZero  = graded.filter(c => c.grade === 'A0').length;
-                const bGrade = graded.filter(c => c.grade?.startsWith('B')).length;
-                const others = total - aPlus - aZero - bGrade;
                 const pct = (n: number) => total > 0 ? Math.round(n / total * 100) : 0;
+                // 등급별 개수
+                const cnt: Record<string, number> = {};
+                for (const g of GRADES) cnt[g] = graded.filter(c => c.grade === g).length;
+                // 등급 텍스트 색상
+                const gradeColor = (g: string) => {
+                  if (g === 'A+') return 'text-(--accent) font-bold';
+                  if (g === 'A0') return 'text-(--text-2)';
+                  if (g === 'F')  return 'text-red-400';
+                  if (g.startsWith('B')) return 'text-(--text-2) opacity-75';
+                  return 'text-(--text-3)';
+                };
                 return (
                   <>
                     <div className="flex justify-between items-center mb-2">
@@ -734,23 +741,24 @@ function Dashboard(
                         {t('dashCompletedN')} <b className="text-(--text-2) tabular-nums"> {total} </b></span>
                     </div>
                     <div className="flex h-2.5 rounded-full overflow-hidden">
-                      <div style={{ width: `${pct(aPlus)}%`, background: 'var(--accent)' }}/>
-                      <div style={{ width: `${pct(aZero)}%`, background: 'var(--accent)', opacity: .55 }} className="ml-px"/>
-                      <div style={{ width: `${pct(bGrade)}%`, background: 'var(--accent)', opacity: .28 }} className="ml-px"/>
+                      <div style={{ width: `${pct(cnt['A+'])}%`, background: 'var(--accent)' }}/>
+                      <div style={{ width: `${pct(cnt['A0'])}%`, background: 'var(--accent)', opacity: .55 }} className="ml-px"/>
+                      <div style={{ width: `${pct(cnt['B+'])}%`, background: 'var(--accent)', opacity: .28 }} className="ml-px"/>
+                      <div style={{ width: `${pct(cnt['B0'])}%`, background: 'var(--accent)', opacity: .14 }} className="ml-px"/>
                       <div className="flex-1 bg-(--bar-track) ml-px"/>
                     </div>
                     <div className="flex justify-between mt-1.5 text-[10px]">
-                      <div className="flex gap-3.5">
-                        <span className="text-(--accent) font-bold">A+ <span className="tabular-nums">{pct(aPlus)}%</span></span>
-                        <span className="text-(--text-2)">A0 <span className="tabular-nums">{pct(aZero)}%</span></span>
-                        <span className="text-(--text-3)">B <span className="tabular-nums">{pct(bGrade)}%</span></span>
-                        <span className="text-(--text-3) opacity-60">{t('dashBelowC')} <span className="tabular-nums">{pct(others)}%</span></span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {GRADES.filter(g => cnt[g] > 0).map(g => (
+                          <span key={g} className={gradeColor(g)}>
+                            {g} <span className="tabular-nums">{pct(cnt[g])}%</span>
+                          </span>
+                        ))}
                       </div>
-                      <div className="flex gap-2 text-(--text-3)">
-                        {aPlus  > 0 && <span><b className="text-(--accent) tabular-nums">{aPlus}</b>개</span>}
-                        {aZero  > 0 && <span><b className="text-(--text-2) tabular-nums">{aZero}</b>개</span>}
-                        {bGrade > 0 && <span><b className="text-(--text-3) tabular-nums">{bGrade}</b>개</span>}
-                        {others > 0 && <span><b className="text-(--text-3) tabular-nums opacity-60">{others}</b>개</span>}
+                      <div className="flex flex-wrap gap-x-2 gap-y-1 text-(--text-3) justify-end">
+                        {GRADES.filter(g => cnt[g] > 0).map(g => (
+                          <span key={g}><b className={`tabular-nums ${gradeColor(g)}`}>{cnt[g]}</b>개</span>
+                        ))}
                       </div>
                     </div>
                   </>
