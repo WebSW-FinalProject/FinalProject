@@ -739,11 +739,19 @@ function Dashboard(
                       <div style={{ width: `${pct(bGrade)}%`, background: 'var(--accent)', opacity: .28 }} className="ml-px"/>
                       <div className="flex-1 bg-(--bar-track) ml-px"/>
                     </div>
-                    <div className="flex gap-3.5 mt-1.5 text-[10px]">
-                      <span className="text-(--accent) font-bold">A+ <span className="tabular-nums">{pct(aPlus)}%</span></span>
-                      <span className="text-(--text-2)">A0 <span className="tabular-nums">{pct(aZero)}%</span></span>
-                      <span className="text-(--text-3)">B <span className="tabular-nums">{pct(bGrade)}%</span></span>
-                      <span className="text-(--text-3) opacity-60">{t('dashBelowC')} <span className="tabular-nums">{pct(others)}%</span></span>
+                    <div className="flex justify-between mt-1.5 text-[10px]">
+                      <div className="flex gap-3.5">
+                        <span className="text-(--accent) font-bold">A+ <span className="tabular-nums">{pct(aPlus)}%</span></span>
+                        <span className="text-(--text-2)">A0 <span className="tabular-nums">{pct(aZero)}%</span></span>
+                        <span className="text-(--text-3)">B <span className="tabular-nums">{pct(bGrade)}%</span></span>
+                        <span className="text-(--text-3) opacity-60">{t('dashBelowC')} <span className="tabular-nums">{pct(others)}%</span></span>
+                      </div>
+                      <div className="flex gap-2 text-(--text-3)">
+                        {aPlus  > 0 && <span><b className="text-(--accent) tabular-nums">{aPlus}</b>개</span>}
+                        {aZero  > 0 && <span><b className="text-(--text-2) tabular-nums">{aZero}</b>개</span>}
+                        {bGrade > 0 && <span><b className="text-(--text-3) tabular-nums">{bGrade}</b>개</span>}
+                        {others > 0 && <span><b className="text-(--text-3) tabular-nums opacity-60">{others}</b>개</span>}
+                      </div>
                     </div>
                   </>
                 );
@@ -785,15 +793,13 @@ function Dashboard(
               const libGPA   = fmtGpa(calcGpa(libCourses));
               const majorGPA = fmtGpa(calcGpa(majorCourses));
 
-              // 성적 개수 집계 (완료 학기용)
+              // 성적 개수 집계 (완료 학기용 — 펼쳤을 때만 표시)
               const gradeCounts: Record<string, number> = {};
               if (!isCurrent) {
                 for (const c of semCourses) {
                   if (c.grade) gradeCounts[c.grade] = (gradeCounts[c.grade] || 0) + 1;
                 }
               }
-              // 헤더에 표시할 상위 등급 (A+/A0만, 있는 것만)
-              const topGrades = ['A+', 'A0'].filter(g => gradeCounts[g] > 0);
 
               // 이 학기에서 입력된 성적 수 (완료 버튼 표시 조건)
               const thisFilled = semCourses.filter((c: any) => grades[c.id]);
@@ -846,18 +852,6 @@ function Dashboard(
                               <span>{t('dashMajor')} <b className="text-(--text-2)">{majorGPA}</b></span>
                             </div>
                           </div>
-                          {/* 상위 등급 칩 (A+/A0) */}
-                          {topGrades.length > 0 && (
-                            <div className="flex gap-1 ml-1">
-                              {topGrades.map(g => (
-                                <span key={g}
-                                      className="px-1.5 py-0.5 rounded-full text-[9px] font-bold
-                                                 bg-(--accent-bg) text-(--accent) tabular-nums">
-                                  {g}·{gradeCounts[g]}
-                                </span>
-                              ))}
-                            </div>
-                          )}
                         </>
                       )}
                     </div>
@@ -1020,18 +1014,19 @@ function Dashboard(
                         // 현재 학기가 아니지만, 데이터 있으면 :
                         <div className="px-4 pb-3">
 
-                          {/* 등급별 개수 전체 */}
+                          {/* 등급별 개수 — 뱃지 스타일 */}
                           {Object.keys(gradeCounts).length > 0 && (
-                            <div className="flex flex-wrap gap-1 pt-2 pb-2.5">
+                            <div className="flex flex-wrap gap-2 pt-2 pb-2.5">
                               {GRADES.filter(g => gradeCounts[g] > 0).map(g => (
-                                <span key={g}
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold
-                                                  tabular-nums bg-(--inner-bg)
-                                                  ${g.startsWith('A') ? 'text-(--accent)' :
-                                                    g.startsWith('B') ? 'text-(--text-1)' :
-                                                    g === 'F'          ? 'text-red-400'    :
-                                                                         'text-(--text-3)'}`}>
-                                  {g}&thinsp;<span className="font-normal opacity-70">×</span>{gradeCounts[g]}
+                                <span key={g} className="flex items-center gap-1 text-[10px]">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums
+                                                    ${g.startsWith('A') ? 'bg-(--accent-bg) text-(--accent)' :
+                                                      g.startsWith('B') ? 'bg-(--badge-neutral-bg) text-(--text-1)' :
+                                                      g === 'F'          ? 'bg-red-500/10 text-red-400' :
+                                                                           'bg-(--inner-bg) text-(--text-3)'}`}>
+                                    {g}
+                                  </span>
+                                  <span className="text-(--text-2) tabular-nums">{gradeCounts[g]}개</span>
                                 </span>
                               ))}
                             </div>
